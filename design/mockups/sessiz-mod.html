@@ -31,6 +31,26 @@
     padding: 24px;
   }
 
+  .intro {
+    width: min(1280px, 100%);
+    text-align: center;
+    padding: 4px 8px 2px;
+  }
+  .intro h1 {
+    margin: 0;
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 500;
+    font-size: clamp(20px, 2.4vw, 28px);
+    letter-spacing: 0.01em;
+  }
+  .intro p {
+    margin: 6px 0 0;
+    font-size: 13.5px;
+    color: var(--ink-faint);
+    letter-spacing: 0.01em;
+  }
+
   .canvas-frame {
     position: relative;
     width: min(1280px, 100%);
@@ -332,6 +352,10 @@
     flex-wrap: wrap;
     font-size: 12px;
     color: var(--ink-faint);
+    padding: 14px 18px;
+    border-radius: 10px;
+    border: 1px solid rgba(244, 240, 230, 0.1);
+    background: rgba(244, 240, 230, 0.03);
   }
   .demo-label {
     letter-spacing: 0.2em;
@@ -367,6 +391,11 @@
     .legend { border-left: 0; padding-left: 0; }
   }
 </style>
+
+<div class="intro">
+  <h1>&ldquo;Via Ethos&rdquo; &middot; Quiet Mode</h1>
+  <p>A living painting for a wall-mounted panel — the sky repaints itself through the day, and your <em>Inner Weather</em> changes how the brush moves.</p>
+</div>
 
 <div class="canvas-frame">
   <canvas id="painting"></canvas>
@@ -422,7 +451,7 @@
 </div>
 
 <div class="demo">
-  <span class="demo-label">Mockup preview</span>
+  <span class="demo-label">Try it &mdash; time of day</span>
   <label>Hour <input type="range" id="hourslider" min="0" max="24" step="0.25"></label>
   <span class="hourval" id="hourval">now</span>
   <span class="demo-label">Inner weather</span>
