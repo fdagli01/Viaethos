@@ -109,6 +109,34 @@ karşılayan bir katman: **İç Hava Durumu (Inner Weather).**
   üründe saat otomatik akar, iç hava durumu ayrı bir ince kontrolden
   (ör. günlük giriş anında) seçilir.
 
+## 8. Van Gogh Fırça İşi
+
+Üçüncü revizyon: düz/vektörel manzara yerine gökyüzü artık gerçek fırça
+darbeleriyle "boyanıyor" (Canvas üzerinde girdap alanı / flow-field
+tekniğiyle). Referans doğrudan Starry Night'ın kendisi değil, onun
+resim dilinin (kıvrımlı gökyüzü, ışıldayan yıldız haleleri, koyu servi
+silüeti) bir yorumu.
+
+- **Girdap alanı (flow field):** gökyüzündeki her fırça darbesi, iki
+  görünmez girdap merkezinin ve dalgalı bir zemin akıntısının
+  toplamından yön alır — rastgele değil, tutarlı bir "rüzgâr" hisleri.
+- **İç Hava Durumu artık kıvrımın kendisini de değiştiriyor:** Clear
+  sakin/uzun darbeler; Radiant parlak/altın-turuncu ve daha yoğun
+  girdap; Heavy yavaş/soluk/seyrek darbe; Stormy çılgın frekans, yüksek
+  genlik, koyu mor-lacivert palet. Yani ruh hali sayı değil,
+  **fırçanın davranışı** olarak ifade ediliyor.
+- **Yıldızlar** nokta değil, ışıldayan halka/hale darbeleri (Starry
+  Night'ın karakteristik yıldız çizimi); gece derinleştikçe sayı ve
+  parlaklık artıyor.
+- **Solda koyu bir servi silüeti** — yukarı doğru alev gibi uzayan,
+  girdap alanını takip eden kısa vuruşlardan oluşan bir motif; tablonun
+  imzası.
+- **Tuval dokusu:** ince bir SVG `feTurbulence` gren katmanı `overlay`
+  blend mode ile üstte durur — ekran değil gerçek bir tuval hissi verir.
+- Teknik not: renk karıştırma fonksiyonu hem `#rrggbb` hem `rgb(r,g,b)`
+  girişini doğru ayrıştıracak şekilde birleştirildi (önceki sürümde
+  hex harfleri regex'i bozup hatalı renklere yol açıyordu).
+
 ## 5. Ton Rehberi: Mistik Ruh, Kusursuz Kullanışlılık
 
 Netleştirilen ilke: **mistik/felsefi atmosfer korunur; "profesyonellik"
