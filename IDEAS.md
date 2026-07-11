@@ -77,6 +77,38 @@ v2'deki monokrom yön revize edildi; disiplin korunuyor:
   serif düstur. Arayüz dili **İngilizce**dir (Virtue of the day, The
   Path, honored/deferred); felsefi sözlük İngilizce'de de korunur.
 
+## 7. Yaşayan Manzara + İç Hava Durumu
+
+İkinci revizyon: statik aurora yerine **saate göre gerçekten değişen,
+prosedürel olarak çizilen bir manzara** (Canvas): şafak → gündüz →
+günbatımı → gece döngüsü; güneş/ay bir yay üzerinde hareket eder, yıldızlar
+gece belirir, dağ silüetleri günün ışığından boyanır. Panel artık bir
+ekran değil, gün boyunca kendi kendine değişen bir tablo.
+
+Bunun üzerine, ürün sahibinin ifade etmek istediği kişisel boyutu
+karşılayan bir katman: **İç Hava Durumu (Inner Weather).**
+
+- Kullanıcı günlük (veya istediği an) ruh halini dört durumdan biriyle
+  işaretler: **Clear** (berrak), **Radiant** (parlak/taşkın), **Heavy**
+  (ağır/düşük), **Stormy** (fırtınalı/yoğun dalgalanma). Bu, klinik bir
+  "mood tracker" değil — manzaranın atmosferine işleyen sanatsal bir
+  ifade katmanı.
+- Seçim, manzaranın **ışığını ve doygunluğunu** değiştirir (Radiant:
+  daha canlı ve parlak; Heavy: soluk ve loş; Stormy: fırtına bulutları
+  ve düşük kontrast) — sayı veya grafikle değil, tablo'nun kendi
+  havasıyla yansıtılır.
+- **Yargısız kayıt:** Fırtınalı bir gün "kötü gün" değil, Yol üzerinde
+  farklı renkte bir taştır — geçmişe bakınca ruh hali örüntülerini
+  görmek mümkün olur (hangi mevsimde, hangi Pillar yoğunluğunda hangi
+  hava daha sık?) ama bu bir performans skoru değildir.
+- Mekanik olarak: `reflections` tablosuna `inner_weather` alanı eklenir
+  (clear/radiant/heavy/stormy), günün manzarasını o gün boyunca etkiler.
+  Zorunlu değildir; işaretlenmezse manzara yalnızca saate göre değişir.
+- Mockup'ta demo amaçlı bir saat kaydırıcısı ve hava durumu seçici var
+  (yalnızca önizleme içindir, üretim arayüzünde yer almaz) — gerçek
+  üründe saat otomatik akar, iç hava durumu ayrı bir ince kontrolden
+  (ör. günlük giriş anında) seçilir.
+
 ## 5. Ton Rehberi: Mistik Ruh, Kusursuz Kullanışlılık
 
 Netleştirilen ilke: **mistik/felsefi atmosfer korunur; "profesyonellik"
