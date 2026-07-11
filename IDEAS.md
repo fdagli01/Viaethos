@@ -190,6 +190,17 @@ her santimi boyalı, eksiksiz bir kompozisyon.
 - Gece tüm sahne çivite gömülür, yıldız haleleri ve evin penceresi
   kalır — gündüz Arles, gece Yıldızlı Gece.
 
+## 11. Ruh Hali Tutarlılığı: Gökyüzü + Tarla
+
+Beşinci düzeltme: İç Hava Durumu yalnızca gökyüzünde okunuyordu, tarla
+sabit kalıyordu. `WEATHER` tanımına iki ortak parametre eklendi —
+`thick` (fırça kalınlık çarpanı) ve `dense` (ızgara sıklığı çarpanı) —
+ve hem `paintSwirlSky` hem `paintWheatField` artık aynı iki parametreyi
+okuyor. Sonuç: Heavy'de gökyüzü de tarla da ince ve seyrek fırçayla
+resmediliyor (rüzgârın verecek gücü azmış gibi); Stormy'de ikisi de
+kalın, yoğun ve kaotik. Ruh hali artık sahnenin tamamında **tek bir
+fırça diliyle** tutarlı okunuyor.
+
 ## 5. Ton Rehberi: Mistik Ruh, Kusursuz Kullanışlılık
 
 Netleştirilen ilke: **mistik/felsefi atmosfer korunur; "profesyonellik"

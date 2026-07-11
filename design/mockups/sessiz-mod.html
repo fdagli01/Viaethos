@@ -454,12 +454,14 @@
     [24, "#060814", "#0b1130", "#181c44"],
   ];
 
-  // Turbulence: how violently the brushwork swirls per inner-weather state
+  // Turbulence: how violently the brushwork swirls per inner-weather state.
+  // `thick` and `dense` drive stroke width/count everywhere the brush touches
+  // canvas — sky AND field — so mood reads the same in both.
   const WEATHER = {
-    clear:   { filter: "none",                                            mist: 0.06, amp: 0.55, freq: 1.00, len: 62, count: 0.85, vortex: 0.55, pal: ["#1c6fc2","#3f93df","#eef3f6","#0e4f96"] },
-    radiant: { filter: "saturate(1.25) brightness(1.1)",                  mist: 0.03, amp: 0.70, freq: 1.15, len: 68, count: 0.95, vortex: 0.75, pal: ["#ffd23f","#ff9d3d","#3f93df","#fff3c4"] },
-    heavy:   { filter: "saturate(0.5) brightness(0.8)",                   mist: 0.28, amp: 0.35, freq: 0.70, len: 46, count: 0.65, vortex: 0.35, pal: ["#2b3252","#3a3f5c","#20223a","#454a68"] },
-    stormy:  { filter: "saturate(0.6) brightness(0.68) contrast(1.12)",   mist: 0.22, amp: 1.05, freq: 1.75, len: 78, count: 1.20, vortex: 1.15, pal: ["#1c2140","#3d2f66","#0f1230","#5a3a6e"] },
+    clear:   { filter: "none",                                            mist: 0.06, amp: 0.55, freq: 1.00, len: 62, count: 0.85, vortex: 0.55, thick: 1.00, dense: 1.00, pal: ["#1c6fc2","#3f93df","#eef3f6","#0e4f96"] },
+    radiant: { filter: "saturate(1.25) brightness(1.1)",                  mist: 0.03, amp: 0.70, freq: 1.15, len: 68, count: 0.95, vortex: 0.75, thick: 1.30, dense: 1.20, pal: ["#ffd23f","#ff9d3d","#3f93df","#fff3c4"] },
+    heavy:   { filter: "saturate(0.5) brightness(0.8)",                   mist: 0.28, amp: 0.35, freq: 0.70, len: 46, count: 0.65, vortex: 0.35, thick: 0.62, dense: 0.55, pal: ["#2b3252","#3a3f5c","#20223a","#454a68"] },
+    stormy:  { filter: "saturate(0.6) brightness(0.68) contrast(1.12)",   mist: 0.22, amp: 1.05, freq: 1.75, len: 78, count: 1.20, vortex: 1.15, thick: 1.55, dense: 1.35, pal: ["#1c2140","#3d2f66","#0f1230","#5a3a6e"] },
   };
 
   let weather = "clear";
@@ -545,13 +547,15 @@
     ctx.stroke();
   }
 
-  // Dense impasto sky: every inch covered in choppy strokes, no gradient showing
+  // Dense impasto sky: every inch covered in choppy strokes, no gradient showing.
+  // Mood reads directly in the brush: thicker + denser strokes for
+  // Radiant/Stormy, thinner + sparser (frailer) strokes for Heavy.
   function paintSwirlSky(ctx, W, horizonY, wx, h, seedBase) {
     const field = makeField(seedBase, wx.vortex, wx.freq);
     const r = rng(seedBase + 1);
     const base = skyAt(h);
     // grid pass guarantees full coverage; jitter breaks the grid feel
-    const cell = 26;
+    const cell = 26 / Math.sqrt(wx.dense);
     const cols = Math.ceil(W / cell) + 1, rows = Math.ceil(horizonY / cell) + 1;
     for (let gy = 0; gy < rows; gy++) {
       for (let gx = 0; gx < cols; gx++) {
@@ -562,7 +566,7 @@
         const col = mixRgb(under, wx.pal[Math.floor(r() * wx.pal.length)], 0.3 + r() * 0.45);
         const ang = field(u, v) + (r() - 0.5) * wx.amp;
         paintStroke(ctx, W, horizonY, x, y, wx.len * (0.5 + r() * 0.6), ang, field,
-          5 + r() * 6, col, 0.55 + r() * 0.4);
+          (5 + r() * 6) * wx.thick, col, 0.55 + r() * 0.4);
       }
     }
     // second loose pass: brighter accents riding on top
@@ -574,7 +578,7 @@
       const col = mixRgb(under, wx.pal[Math.floor(r() * wx.pal.length)], 0.5 + r() * 0.4);
       const ang = field(u, v) + (r() - 0.5) * wx.amp;
       paintStroke(ctx, W, horizonY, x, y, wx.len * (0.55 + r() * 0.6), ang, field,
-        4 + r() * 5, col, 0.4 + r() * 0.35);
+        (4 + r() * 5) * wx.thick, col, 0.4 + r() * 0.35);
     }
     ctx.globalAlpha = 1;
   }
@@ -762,8 +766,10 @@
     ctx.globalAlpha = 1;
   }
 
-  // The wheat field: dense combed impasto with blue-grey and green accents
-  function paintWheatField(ctx, W, H, groundY, dk, seedBase) {
+  // The wheat field: dense combed impasto with blue-grey and green accents.
+  // Same mood language as the sky: Radiant/Stormy comb thick and dense,
+  // Heavy leaves the field thin and sparse — as if the wind had less to give.
+  function paintWheatField(ctx, W, H, groundY, dk, wx, seedBase) {
     const r = rng(seedBase + 61);
     const dim = c => mixHex(c, "#0e1020", Math.min(dk * 0.9, 0.75));
     const wheatTop = groundY + (H - groundY) * 0.18;
@@ -771,7 +777,7 @@
     const accent = ["#8aa0c9", "#6f86b8", "#a9b8d9"];   // the blue-grey stalks
     const tufts = ["#5c7a2e", "#48651f", "#6f8a3a"];    // green tufts in the wheat
     // base golden combing — dense, guaranteed coverage via grid + jitter
-    const cell = 16;
+    const cell = 16 / Math.sqrt(wx.dense);
     const cols = Math.ceil(W / cell) + 1;
     const rows = Math.ceil((H - wheatTop) / cell) + 1;
     for (let gy = 0; gy < rows; gy++) {
@@ -780,13 +786,13 @@
         const y = wheatTop + gy * cell + (r() - 0.5) * cell * 1.5;
         const depth = Math.max(0, Math.min(1, (y - wheatTop) / (H - wheatTop)));
         const len = 12 + depth * 22 + r() * 10;
-        const ang = -0.35 + (r() - 0.5) * 0.3 - depth * 0.15;
+        const ang = -0.35 + (r() - 0.5) * (0.3 + wx.amp * 0.5) - depth * 0.15;
         const pick = r();
         const col = pick > 0.9 ? accent[Math.floor(r() * accent.length)]
                   : pick > 0.82 ? tufts[Math.floor(r() * tufts.length)]
                   : gold[Math.floor(r() * gold.length)];
         ctx.strokeStyle = dim(col);
-        ctx.lineWidth = 2 + depth * 3.5 + r() * 2;
+        ctx.lineWidth = (2 + depth * 3.5 + r() * 2) * wx.thick;
         ctx.lineCap = "round";
         ctx.globalAlpha = 0.5 + depth * 0.3 + r() * 0.2;
         ctx.beginPath();
@@ -853,7 +859,7 @@
     // dense wheat, the pale path cutting through, then the big tree in front
     paintHouse(ctx, W, horizonY, dk, 500);
     paintMeadow(ctx, W, horizonY, dk, 500);
-    paintWheatField(ctx, W, H, horizonY, dk, 500);
+    paintWheatField(ctx, W, H, horizonY, dk, wx, 500);
     paintPath(ctx, W, H, horizonY, dk, 500);
     paintTree(ctx, W, horizonY, dk, 500);
 
