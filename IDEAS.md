@@ -201,6 +201,27 @@ resmediliyor (rüzgârın verecek gücü azmış gibi); Stormy'de ikisi de
 kalın, yoğun ve kaotik. Ruh hali artık sahnenin tamamında **tek bir
 fırça diliyle** tutarlı okunuyor.
 
+## 12. Tüm Sahneye Yedirme + Kargalar
+
+Altıncı revizyon: `thick`/`dense` artık **ağaç, çayır ve patikaya da**
+uygulanıyor — yaprak sayısı/boyu, çit-çayır-çiçek yoğunluğu, patika
+vuruş sıklığı hepsi aynı iki parametreden besleniyor. Ruh hali artık
+tuvalin her köşesinde tutarlı.
+
+"Dolu dolu" isteğine karşılık yeni bir eleman eklendi: **kargalar**
+(`paintCrows`) — Van Gogh'un son tablosu "Buğday Tarlası Üzerinde
+Kargalar"a doğrudan bir gönderme. Sayıları ruh haline bağlı: Clear/
+Radiant'ta gökyüzünde neredeyse yok denecek kadar az (3-4), Heavy'de
+belirginleşiyor (~11), Stormy'de göğü huzursuzca dolduruyorlar (~16).
+Bu, "zor günler"i cezalandırıcı bir grafikle değil, **tablonun kendi
+içeriğiyle** anlatan bir mekanik — kargalar kötü değil, sadece o günün
+manzarasının bir parçası.
+
+Sıradaki "doluluk" adayları (henüz eklenmedi, öneri): sahanın uzak
+köşesinde küçük bir su birikintisi/kuyu (ilk referanstaki gibi),
+tarlanın ötesinde ikinci bir uzak bina, rüzgârda eğilen tek tük yabani
+otlar ön planda, Stormy'de ince yağmur çizgileri.
+
 ## 5. Ton Rehberi: Mistik Ruh, Kusursuz Kullanışlılık
 
 Netleştirilen ilke: **mistik/felsefi atmosfer korunur; "profesyonellik"
