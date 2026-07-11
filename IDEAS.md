@@ -68,6 +68,14 @@ v2'deki monokrom yön revize edildi; disiplin korunuyor:
   soluk. "Hayatımın hangi alanı soluyor?" rengin kendisinden okunur.
 - **Mevsimsel zemin:** Zemin tonu yıl boyunca çok yavaş kayar (kış:
   derin lacivert, bahar: sıcak grafit). Panel "yaşıyor" hisseder.
+- **Revizyon (canlı yön):** Ürün sahibinin kişiliğine uygun olarak palet
+  canlandırıldı — koyu menekşe/indigo zemin üzerinde yavaş hareket eden
+  aurora ışıkları, parlak mücevher tonları (Mind #7FB2FF, Body #FF7E67,
+  Craft #FFBE55, Life #6FDD9A). Sessiz Mod ekranı bir yazılım paneli
+  gibi değil, **duvarda asılı bir tablo gibi** kompoze edilir: merkezde
+  büyük saat, ortada yatay vitray friz (Günün Mozaiği), altta merkezde
+  serif düstur. Arayüz dili **İngilizce**dir (Virtue of the day, The
+  Path, honored/deferred); felsefi sözlük İngilizce'de de korunur.
 
 ## 5. Ton Rehberi: Mistik Ruh, Kusursuz Kullanışlılık
 

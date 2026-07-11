@@ -1,276 +1,306 @@
-<title>Via Ethos — Sessiz Mod</title>
+<title>Via Ethos — Quiet Mode</title>
 <style>
   :root {
-    --ground: #12161f;
-    --panel: #161c28;
-    --surface: #1c2432;
-    --line: #262f40;
-    --ink: #e9e5db;
-    --ink-dim: #a7adb8;
-    --ink-faint: #6d7480;
-    --mind: #7c9cc9;
-    --body-p: #ce7a66;
-    --craft: #d9a64b;
-    --life: #85a886;
-    --missed: #b9862f;
+    --ink: #f4f0e6;
+    --ink-dim: #b7b2c4;
+    --ink-faint: #7d7890;
+    --line: rgba(244, 240, 230, 0.14);
+    --mind: #7fb2ff;
+    --body-p: #ff7e67;
+    --craft: #ffbe55;
+    --life: #6fdd9a;
+    --deferred: #d99a3d;
     --serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
     --sans: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
   }
 
   * { box-sizing: border-box; }
-
   html, body { height: 100%; }
 
   body {
     margin: 0;
-    background: var(--ground);
+    background: #0c0a18;
     font-family: var(--sans);
     color: var(--ink);
     display: flex;
     align-items: center;
     justify-content: center;
     min-height: 100vh;
-    padding: 24px;
+    padding: 28px;
   }
 
-  .frame {
+  /* ---------- The canvas: a painting on the wall ---------- */
+
+  .canvas {
+    position: relative;
     width: min(1280px, 100%);
     aspect-ratio: 16 / 10;
-    min-height: 640px;
-    background:
-      radial-gradient(120% 90% at 20% 0%, #18202e 0%, var(--panel) 55%);
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    display: grid;
-    grid-template-columns: minmax(340px, 5fr) minmax(420px, 7fr);
-    grid-template-rows: 1fr auto;
+    min-height: 660px;
+    border-radius: 12px;
     overflow: hidden;
-  }
-
-  /* ---------- Sol bölge: saat, erdem, düstur ---------- */
-
-  .left {
-    padding: 44px 40px 28px 48px;
+    background: linear-gradient(175deg, #191436 0%, #241539 42%, #35163b 72%, #3f1d33 100%);
+    box-shadow:
+      0 0 0 1px rgba(244, 240, 230, 0.08),
+      0 40px 90px rgba(0, 0, 0, 0.55);
     display: flex;
     flex-direction: column;
-    border-right: 1px solid var(--line);
-    min-width: 0;
   }
 
+  .aurora {
+    position: absolute;
+    inset: -20%;
+    pointer-events: none;
+    filter: blur(70px);
+    opacity: 0.55;
+  }
+  .aurora i {
+    position: absolute;
+    border-radius: 50%;
+  }
+  .aurora i:nth-child(1) {
+    width: 55%; height: 45%;
+    left: -8%; top: -6%;
+    background: radial-gradient(circle, rgba(127, 178, 255, 0.5), transparent 70%);
+    animation: drift1 26s ease-in-out infinite alternate;
+  }
+  .aurora i:nth-child(2) {
+    width: 60%; height: 50%;
+    right: -12%; top: 10%;
+    background: radial-gradient(circle, rgba(255, 126, 103, 0.38), transparent 70%);
+    animation: drift2 32s ease-in-out infinite alternate;
+  }
+  .aurora i:nth-child(3) {
+    width: 70%; height: 45%;
+    left: 15%; bottom: -12%;
+    background: radial-gradient(circle, rgba(255, 190, 85, 0.3), transparent 70%);
+    animation: drift3 38s ease-in-out infinite alternate;
+  }
+
+  @keyframes drift1 { to { transform: translate(9%, 7%) scale(1.12); } }
+  @keyframes drift2 { to { transform: translate(-8%, 9%) scale(0.92); } }
+  @keyframes drift3 { to { transform: translate(-6%, -8%) scale(1.1); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .aurora i, .tile.active { animation: none !important; }
+  }
+
+  .layer { position: relative; z-index: 1; }
+
+  /* ---------- Top band ---------- */
+
+  .top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 34px 44px 0;
+  }
   .wordmark {
     font-family: var(--serif);
     font-size: 15px;
-    letter-spacing: 0.42em;
+    letter-spacing: 0.44em;
     text-transform: uppercase;
     color: var(--ink-dim);
   }
   .wordmark b { color: var(--craft); font-weight: 500; }
-
-  .clock {
-    margin-top: 40px;
-    font-size: clamp(64px, 8.5vw, 108px);
-    font-weight: 200;
-    letter-spacing: 0.01em;
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
-  }
-  .clock .sec { font-size: 0.35em; color: var(--ink-faint); font-weight: 300; }
-
-  .date {
-    margin-top: 12px;
-    font-size: 17px;
+  .day-sum {
+    text-align: right;
+    font-size: 13px;
     color: var(--ink-dim);
-    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.7;
   }
+  .day-sum b { color: var(--ink); font-weight: 600; }
 
+  /* ---------- Clock + virtue ---------- */
+
+  .sky {
+    text-align: center;
+    margin-top: 6px;
+  }
+  .clock {
+    font-size: clamp(72px, 9.5vw, 122px);
+    font-weight: 200;
+    line-height: 1;
+    letter-spacing: 0.015em;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 60px rgba(127, 178, 255, 0.25);
+  }
+  .clock .sec { font-size: 0.3em; color: var(--ink-faint); font-weight: 300; }
+  .date {
+    margin-top: 10px;
+    font-size: 16px;
+    color: var(--ink-dim);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
   .virtue {
-    margin-top: 28px;
     display: inline-flex;
     align-items: center;
     gap: 10px;
-    align-self: flex-start;
-    padding: 8px 16px;
+    margin-top: 18px;
+    padding: 8px 18px;
     border: 1px solid var(--line);
     border-radius: 999px;
-    font-size: 13px;
-    letter-spacing: 0.14em;
+    font-size: 12.5px;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
     color: var(--ink-dim);
+    background: rgba(12, 10, 24, 0.25);
   }
   .virtue::before {
     content: "";
     width: 7px; height: 7px;
     border-radius: 50%;
     background: var(--craft);
+    box-shadow: 0 0 10px var(--craft);
   }
   .virtue b { color: var(--ink); font-weight: 600; }
 
-  .maxim {
+  /* ---------- The mosaic frieze ---------- */
+
+  .frieze-wrap {
     margin-top: auto;
-    padding-top: 32px;
+    padding: 26px 44px 0;
   }
-  .maxim-label {
-    font-size: 11px;
+  .frieze-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 11.5px;
     letter-spacing: 0.22em;
     text-transform: uppercase;
     color: var(--ink-faint);
-    margin-bottom: 14px;
+  }
+  .frieze {
+    position: relative;
+    height: 108px;
+    margin-top: 12px;
+  }
+  .baseline {
+    position: absolute;
+    left: 0; right: 0; bottom: 22px;
+    border-bottom: 1px solid var(--line);
+  }
+  .hour {
+    position: absolute;
+    bottom: 0;
+    font-size: 10.5px;
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+    transform: translateX(-50%);
+  }
+
+  .tile {
+    position: absolute;
+    bottom: 23px;
+    height: 64px;
+    border-radius: 7px 7px 3px 3px;
+    border: 1px solid transparent;
+    overflow: hidden;
+  }
+  .tile.done {
+    background: linear-gradient(180deg,
+      color-mix(in srgb, var(--c) 88%, white 4%) 0%,
+      color-mix(in srgb, var(--c) 62%, #0c0a18) 100%);
+    box-shadow: 0 6px 22px color-mix(in srgb, var(--c) 30%, transparent);
+  }
+  .tile.active {
+    background: linear-gradient(180deg, var(--c) 0%, color-mix(in srgb, var(--c) 55%, #0c0a18) 100%);
+    border-color: color-mix(in srgb, var(--c) 70%, white);
+    animation: glowpulse 4.5s ease-in-out infinite;
+  }
+  .tile.planned {
+    background: color-mix(in srgb, var(--c) 10%, transparent);
+    border: 1px dashed color-mix(in srgb, var(--c) 55%, transparent);
+    height: 44px;
+  }
+  .tile.deferred {
+    background: repeating-linear-gradient(135deg,
+      color-mix(in srgb, var(--deferred) 22%, transparent) 0 5px,
+      transparent 5px 10px);
+    border: 1px solid color-mix(in srgb, var(--deferred) 45%, transparent);
+    height: 44px;
+  }
+
+  @keyframes glowpulse {
+    0%, 100% { box-shadow: 0 0 18px color-mix(in srgb, var(--c) 35%, transparent); }
+    50%      { box-shadow: 0 0 42px color-mix(in srgb, var(--c) 65%, transparent); }
+  }
+
+  .now-marker {
+    position: absolute;
+    bottom: 12px;
+    top: -14px;
+    width: 1px;
+    background: linear-gradient(180deg, transparent, var(--ink) 30%, var(--ink));
+    z-index: 3;
+  }
+  .now-marker::before {
+    content: "";
+    position: absolute;
+    top: 0; left: -3.5px;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--ink);
+    box-shadow: 0 0 12px rgba(244, 240, 230, 0.8);
+  }
+
+  .now-card {
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14.5px;
+    color: var(--ink-dim);
+  }
+  .now-card .pulse {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: var(--mind);
+    box-shadow: 0 0 12px var(--mind);
+    flex: none;
+  }
+  .now-card b { color: var(--ink); font-weight: 600; }
+  .now-card i { font-style: normal; color: var(--ink-faint); }
+
+  /* ---------- Maxim ---------- */
+
+  .maxim {
+    text-align: center;
+    padding: 26px 44px 8px;
   }
   .maxim blockquote {
-    margin: 0;
+    margin: 0 auto;
     font-family: var(--serif);
-    font-size: clamp(17px, 1.6vw, 21px);
-    line-height: 1.55;
-    color: var(--ink);
-    max-width: 26em;
+    font-style: italic;
+    font-size: clamp(17px, 1.9vw, 23px);
+    line-height: 1.6;
+    max-width: 44em;
     text-wrap: balance;
+    color: var(--ink);
   }
   .maxim cite {
     display: block;
-    margin-top: 14px;
+    margin-top: 12px;
     font-style: normal;
-    font-size: 13px;
-    color: var(--ink-dim);
-    letter-spacing: 0.04em;
-  }
-  .maxim cite span { color: var(--ink-faint); }
-
-  /* ---------- Sağ bölge: Günün Mozaiği ---------- */
-
-  .right {
-    padding: 40px 48px 20px 40px;
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-  }
-
-  .right-head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 16px;
-  }
-  .right-head h2 {
-    margin: 0;
-    font-family: var(--serif);
-    font-size: 20px;
-    font-weight: 500;
-    letter-spacing: 0.02em;
-  }
-  .right-head .progress {
-    font-size: 13px;
-    color: var(--ink-dim);
-    font-variant-numeric: tabular-nums;
-  }
-  .right-head .progress b { color: var(--ink); font-weight: 600; }
-
-  .mosaic {
-    position: relative;
-    flex: 1;
-    margin-top: 22px;
-    min-height: 0;
-  }
-
-  .hourline {
-    position: absolute;
-    left: 0; right: 0;
-    border-top: 1px solid var(--line);
-    font-size: 11px;
+    font-size: 12.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
     color: var(--ink-faint);
-    font-variant-numeric: tabular-nums;
-    padding-top: 3px;
   }
 
-  .block {
-    position: absolute;
-    left: 52px;
-    right: 8px;
-    border-radius: 6px;
-    padding: 7px 12px;
-    font-size: 13px;
-    line-height: 1.3;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    border: 1px solid transparent;
-  }
-  .block .t {
-    font-weight: 600;
-    color: var(--ink);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .block .m {
-    font-size: 11px;
-    color: var(--ink-dim);
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .block.done      { background: color-mix(in srgb, var(--c) 26%, var(--panel)); border-color: color-mix(in srgb, var(--c) 55%, transparent); }
-  .block.done::after {
-    content: "✓";
-    position: absolute; right: 10px; top: 50%;
-    transform: translateY(-50%);
-    color: var(--c); font-size: 13px;
-  }
-  .block.active    {
-    background: color-mix(in srgb, var(--c) 32%, var(--panel));
-    border-color: var(--c);
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 40%, transparent),
-                0 0 24px color-mix(in srgb, var(--c) 18%, transparent);
-    animation: breathe 4.5s ease-in-out infinite;
-  }
-  .block.planned   { background: color-mix(in srgb, var(--c) 8%, transparent); border: 1px dashed color-mix(in srgb, var(--c) 45%, transparent); }
-  .block.planned .t { color: var(--ink-dim); font-weight: 500; }
-  .block.missed    { background: color-mix(in srgb, var(--missed) 10%, transparent); border-color: color-mix(in srgb, var(--missed) 40%, transparent); }
-  .block.missed .t { color: color-mix(in srgb, var(--missed) 70%, var(--ink)); font-weight: 500; }
-  .block.missed .m::after { content: " · ertelendi"; color: var(--missed); }
-
-  @keyframes breathe {
-    0%, 100% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 40%, transparent), 0 0 16px color-mix(in srgb, var(--c) 12%, transparent); }
-    50%      { box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 60%, transparent), 0 0 30px color-mix(in srgb, var(--c) 26%, transparent); }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .block.active { animation: none; }
-  }
-
-  .nowline {
-    position: absolute;
-    left: 44px; right: 0;
-    border-top: 1px solid var(--body-p);
-    z-index: 3;
-  }
-  .nowline::before {
-    content: "";
-    position: absolute;
-    left: -5px; top: -4px;
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: var(--body-p);
-  }
-
-  /* ---------- Alt bölge: Yol şeridi ---------- */
+  /* ---------- Footer: the Path ---------- */
 
   .footer {
-    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    padding: 18px 44px 24px;
     border-top: 1px solid var(--line);
-    padding: 18px 48px;
-    display: flex;
-    align-items: center;
-    gap: 32px;
-    background: color-mix(in srgb, var(--ground) 60%, var(--panel));
+    margin-top: 20px;
+    background: rgba(12, 10, 24, 0.3);
   }
-
-  .path {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-  }
+  .path { display: flex; align-items: center; gap: 8px; }
   .path-label {
     font-size: 11px;
     letter-spacing: 0.2em;
@@ -279,48 +309,39 @@
     margin-right: 10px;
   }
   .stone {
-    width: 20px; height: 20px;
-    border-radius: 6px;
-    background: var(--s, var(--surface));
-    border: 1px solid var(--line);
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--s);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--g, transparent) 45%, transparent);
   }
   .stone.gap {
     background: transparent;
     border: 1px dashed var(--line);
-    border-radius: 50%;
-    width: 14px; height: 14px;
+    width: 12px; height: 12px;
     margin: 0 3px;
+    box-shadow: none;
   }
-  .stone.today {
-    outline: 1px solid var(--ink-dim);
-    outline-offset: 2px;
-  }
+  .stone.today { outline: 1.5px solid var(--ink-dim); outline-offset: 3px; }
 
-  .stats {
-    margin-left: auto;
-    display: flex;
-    align-items: center;
-    gap: 28px;
-  }
+  .stats { margin-left: auto; display: flex; gap: 30px; }
   .stat { text-align: right; }
   .stat .v {
-    font-size: 19px;
+    font-size: 20px;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
-    letter-spacing: 0.01em;
   }
   .stat .k {
-    font-size: 11px;
+    font-size: 10.5px;
     color: var(--ink-faint);
-    letter-spacing: 0.14em;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
-    margin-top: 2px;
+    margin-top: 3px;
   }
 
   .legend {
     display: flex;
-    gap: 18px;
-    padding-left: 28px;
+    gap: 16px;
+    padding-left: 26px;
     border-left: 1px solid var(--line);
   }
   .pillar {
@@ -334,67 +355,77 @@
     width: 9px; height: 9px;
     border-radius: 50%;
     background: var(--c);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--c) 70%, transparent);
   }
-  .pillar.fading { opacity: 0.55; }
+  .pillar.fading { opacity: 0.5; }
   .pillar.fading::after {
-    content: "soluyor";
-    font-size: 10px;
-    color: var(--missed);
-    letter-spacing: 0.08em;
+    content: "fading";
+    font-size: 9.5px;
+    color: var(--deferred);
+    letter-spacing: 0.1em;
     text-transform: uppercase;
   }
 
-  @media (max-width: 880px) {
-    .frame { aspect-ratio: auto; grid-template-columns: 1fr; }
-    .left { border-right: 0; border-bottom: 1px solid var(--line); }
-    .mosaic { min-height: 560px; }
-    .footer { flex-wrap: wrap; padding: 18px 24px; }
+  @media (max-width: 900px) {
+    .canvas { aspect-ratio: auto; }
+    .top, .frieze-wrap, .maxim, .footer { padding-left: 24px; padding-right: 24px; }
+    .footer { flex-wrap: wrap; }
     .stats { margin-left: 0; }
     .legend { border-left: 0; padding-left: 0; }
   }
 </style>
 
-<div class="frame">
-  <section class="left">
+<div class="canvas">
+  <div class="aurora"><i></i><i></i><i></i></div>
+
+  <div class="layer top">
     <div class="wordmark">Via <b>·</b> Ethos</div>
+    <div class="day-sum">
+      <b>5 of 9</b> honored<br>
+      <b>3h 40m</b> in focus
+    </div>
+  </div>
 
+  <div class="layer sky">
     <div class="clock" id="clock">14:37<span class="sec">:08</span></div>
-    <div class="date" id="date">11 Temmuz 2026, Cumartesi</div>
+    <div class="date" id="date">Saturday · July 11, 2026</div>
+    <div><span class="virtue">Virtue of the day · <b>Discipline</b></span></div>
+  </div>
 
-    <div class="virtue">Günün erdemi · <b>Disiplin</b></div>
-
-    <div class="maxim">
-      <div class="maxim-label">Günün düsturu</div>
-      <blockquote>
-        &ldquo;Dışsal bir şey seni rahatsız ediyorsa, acı o şeyin kendisinden değil,
-        senin ona ilişkin yargından gelir; ve o yargıyı her an geri çekmek
-        senin elindedir.&rdquo;
-      </blockquote>
-      <cite>Marcus Aurelius <span>· Düşünceler, VIII.47</span></cite>
+  <div class="layer frieze-wrap">
+    <div class="frieze-head">
+      <span>The Day&rsquo;s Mosaic</span>
+      <span>06:00 — 24:00</span>
     </div>
-  </section>
-
-  <section class="right">
-    <div class="right-head">
-      <h2>Günün Mozaiği</h2>
-      <div class="progress"><b>5 / 9</b> tamamlandı &nbsp;·&nbsp; <b>3 sa 40 dk</b> odak</div>
+    <div class="frieze" id="frieze"></div>
+    <div class="now-card">
+      <span class="pulse"></span>
+      <span>Now in focus &mdash; <b>Quarterly report</b> <i>&middot; intention: finish the first draft &middot; 53 min left</i></span>
     </div>
-    <div class="mosaic" id="mosaic"></div>
-  </section>
+  </div>
 
-  <footer class="footer">
+  <div class="layer maxim">
+    <blockquote>
+      &ldquo;If you are distressed by anything external, the pain is not due to the
+      thing itself, but to your own judgment of it &mdash; and this you have the
+      power to revoke at any moment.&rdquo;
+    </blockquote>
+    <cite>Marcus Aurelius &middot; Meditations, VIII.47</cite>
+  </div>
+
+  <footer class="layer footer">
     <div class="path" id="path">
-      <span class="path-label">Yol · Son 14 gün</span>
+      <span class="path-label">The Path &middot; 14 days</span>
     </div>
 
     <div class="stats">
       <div class="stat">
-        <div class="v">12.480</div>
-        <div class="k">Ethos Puanı</div>
+        <div class="v">12,480</div>
+        <div class="k">Ethos Points</div>
       </div>
       <div class="stat">
-        <div class="v">9. gün</div>
-        <div class="k">Kesintisiz</div>
+        <div class="v">Day 9</div>
+        <div class="k">Unbroken</div>
       </div>
     </div>
 
@@ -410,16 +441,16 @@
 <script>
   const DAY_START = 6, DAY_END = 24;
 
-  const blocks = [
-    { s: "06:30", e: "07:10", title: "Sabah rutini",                    time: "06:30 – 07:10", pillar: "life",  state: "done" },
-    { s: "07:20", e: "09:00", title: "Derin çalışma · Ürün mimarisi",   time: "07:20 – 09:00 · niyet: veri modelini bitir", pillar: "craft", state: "done" },
-    { s: "09:30", e: "10:30", title: "Ekip toplantısı",                 time: "09:30 – 10:30", pillar: "craft", state: "done" },
-    { s: "11:00", e: "12:00", title: "Okuma · Derin İş",                time: "11:00 – 12:00", pillar: "mind",  state: "done" },
-    { s: "12:30", e: "13:10", title: "Öğle yürüyüşü",                   time: "12:30 – 13:10", pillar: "body",  state: "missed" },
-    { s: "14:00", e: "15:30", title: "Odak · Çeyrek raporu",            time: "14:00 – 15:30 · niyet: ilk taslağı tamamla", pillar: "mind",  state: "active" },
-    { s: "17:00", e: "18:00", title: "Antrenman",                       time: "17:00 – 18:00", pillar: "body",  state: "planned" },
-    { s: "19:30", e: "20:10", title: "Okuma · Düşünceler",              time: "19:30 – 20:10", pillar: "mind",  state: "planned" },
-    { s: "21:30", e: "21:50", title: "Akşam muhasebesi",                time: "21:30 – 21:50", pillar: "life",  state: "planned" },
+  const tiles = [
+    { s: "06:30", e: "07:10", pillar: "life",  state: "done" },      // Morning ritual
+    { s: "07:20", e: "09:00", pillar: "craft", state: "done" },      // Deep work · product architecture
+    { s: "09:30", e: "10:30", pillar: "craft", state: "done" },      // Team meeting
+    { s: "11:00", e: "12:00", pillar: "mind",  state: "done" },      // Reading · Deep Work
+    { s: "12:30", e: "13:10", pillar: "body",  state: "deferred" },  // Midday walk
+    { s: "14:00", e: "15:30", pillar: "mind",  state: "active" },    // Focus · quarterly report
+    { s: "17:00", e: "18:00", pillar: "body",  state: "planned" },   // Training
+    { s: "19:30", e: "20:10", pillar: "mind",  state: "planned" },   // Reading · Meditations
+    { s: "21:30", e: "21:50", pillar: "life",  state: "planned" },   // Evening review
   ];
 
   const stones = [
@@ -430,19 +461,19 @@
 
   const toH = t => { const [h, m] = t.split(":").map(Number); return h + m / 60; };
   const pct = h => ((h - DAY_START) / (DAY_END - DAY_START)) * 100;
+  const cvar = p => `var(--${p === "body" ? "body-p" : p})`;
 
-  const mosaic = document.getElementById("mosaic");
-  let html = "";
-  for (let h = DAY_START; h <= DAY_END; h += 2) {
-    html += `<div class="hourline" style="top:${pct(h)}%">${String(h).padStart(2, "0")}:00</div>`;
+  const frieze = document.getElementById("frieze");
+  let html = `<div class="baseline"></div>`;
+  for (let h = DAY_START; h <= DAY_END; h += 3) {
+    html += `<div class="hour" style="left:${pct(h)}%">${String(h).padStart(2, "0")}</div>`;
   }
-  for (const b of blocks) {
-    const top = pct(toH(b.s)), height = pct(toH(b.e)) - pct(toH(b.s));
-    html += `<div class="block ${b.state}" style="--c: var(--${b.pillar === "body" ? "body-p" : b.pillar}); top:${top}%; height:${height}%">
-      <span class="t">${b.title}</span><span class="m">${b.time}</span></div>`;
+  for (const t of tiles) {
+    const left = pct(toH(t.s)), width = pct(toH(t.e)) - pct(toH(t.s));
+    html += `<div class="tile ${t.state}" style="--c:${cvar(t.pillar)}; left:${left}%; width:${width}%"></div>`;
   }
-  html += `<div class="nowline" id="nowline"></div>`;
-  mosaic.innerHTML = html;
+  html += `<div class="now-marker" id="nowmark"></div>`;
+  frieze.innerHTML = html;
 
   const path = document.getElementById("path");
   stones.forEach((mix, i) => {
@@ -450,10 +481,11 @@
     if (!mix) { el.className = "stone gap"; }
     else {
       el.className = "stone" + (i === stones.length - 1 ? " today" : "");
-      const cs = mix.map(p => `var(--${p === "body" ? "body-p" : p})`);
+      const cs = mix.map(cvar);
       el.style.setProperty("--s", cs.length > 1
         ? `linear-gradient(135deg, ${cs[0]} 0 50%, ${cs[1]} 50% 100%)`
         : cs[0]);
+      el.style.setProperty("--g", cs[0]);
     }
     path.appendChild(el);
   });
@@ -465,9 +497,10 @@
     const ss = String(now.getSeconds()).padStart(2, "0");
     document.getElementById("clock").innerHTML = `${hh}:${mm}<span class="sec">:${ss}</span>`;
     document.getElementById("date").textContent =
-      now.toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric", weekday: "long" });
+      now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })
+         .replace(",", " ·");
     const h = Math.min(Math.max(now.getHours() + now.getMinutes() / 60, DAY_START), DAY_END);
-    document.getElementById("nowline").style.top = pct(h) + "%";
+    document.getElementById("nowmark").style.left = pct(h) + "%";
   }
   tick();
   setInterval(tick, 1000);
