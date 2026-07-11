@@ -1,0 +1,474 @@
+<title>Via Ethos — Sessiz Mod</title>
+<style>
+  :root {
+    --ground: #12161f;
+    --panel: #161c28;
+    --surface: #1c2432;
+    --line: #262f40;
+    --ink: #e9e5db;
+    --ink-dim: #a7adb8;
+    --ink-faint: #6d7480;
+    --mind: #7c9cc9;
+    --body-p: #ce7a66;
+    --craft: #d9a64b;
+    --life: #85a886;
+    --missed: #b9862f;
+    --serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+    --sans: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    font-family: var(--sans);
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  .frame {
+    width: min(1280px, 100%);
+    aspect-ratio: 16 / 10;
+    min-height: 640px;
+    background:
+      radial-gradient(120% 90% at 20% 0%, #18202e 0%, var(--panel) 55%);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    display: grid;
+    grid-template-columns: minmax(340px, 5fr) minmax(420px, 7fr);
+    grid-template-rows: 1fr auto;
+    overflow: hidden;
+  }
+
+  /* ---------- Sol bölge: saat, erdem, düstur ---------- */
+
+  .left {
+    padding: 44px 40px 28px 48px;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--line);
+    min-width: 0;
+  }
+
+  .wordmark {
+    font-family: var(--serif);
+    font-size: 15px;
+    letter-spacing: 0.42em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  .wordmark b { color: var(--craft); font-weight: 500; }
+
+  .clock {
+    margin-top: 40px;
+    font-size: clamp(64px, 8.5vw, 108px);
+    font-weight: 200;
+    letter-spacing: 0.01em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .clock .sec { font-size: 0.35em; color: var(--ink-faint); font-weight: 300; }
+
+  .date {
+    margin-top: 12px;
+    font-size: 17px;
+    color: var(--ink-dim);
+    letter-spacing: 0.02em;
+  }
+
+  .virtue {
+    margin-top: 28px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    align-self: flex-start;
+    padding: 8px 16px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 13px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  .virtue::before {
+    content: "";
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--craft);
+  }
+  .virtue b { color: var(--ink); font-weight: 600; }
+
+  .maxim {
+    margin-top: auto;
+    padding-top: 32px;
+  }
+  .maxim-label {
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 14px;
+  }
+  .maxim blockquote {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: clamp(17px, 1.6vw, 21px);
+    line-height: 1.55;
+    color: var(--ink);
+    max-width: 26em;
+    text-wrap: balance;
+  }
+  .maxim cite {
+    display: block;
+    margin-top: 14px;
+    font-style: normal;
+    font-size: 13px;
+    color: var(--ink-dim);
+    letter-spacing: 0.04em;
+  }
+  .maxim cite span { color: var(--ink-faint); }
+
+  /* ---------- Sağ bölge: Günün Mozaiği ---------- */
+
+  .right {
+    padding: 40px 48px 20px 40px;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .right-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .right-head h2 {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .right-head .progress {
+    font-size: 13px;
+    color: var(--ink-dim);
+    font-variant-numeric: tabular-nums;
+  }
+  .right-head .progress b { color: var(--ink); font-weight: 600; }
+
+  .mosaic {
+    position: relative;
+    flex: 1;
+    margin-top: 22px;
+    min-height: 0;
+  }
+
+  .hourline {
+    position: absolute;
+    left: 0; right: 0;
+    border-top: 1px solid var(--line);
+    font-size: 11px;
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+    padding-top: 3px;
+  }
+
+  .block {
+    position: absolute;
+    left: 52px;
+    right: 8px;
+    border-radius: 6px;
+    padding: 7px 12px;
+    font-size: 13px;
+    line-height: 1.3;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border: 1px solid transparent;
+  }
+  .block .t {
+    font-weight: 600;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .block .m {
+    font-size: 11px;
+    color: var(--ink-dim);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .block.done      { background: color-mix(in srgb, var(--c) 26%, var(--panel)); border-color: color-mix(in srgb, var(--c) 55%, transparent); }
+  .block.done::after {
+    content: "✓";
+    position: absolute; right: 10px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--c); font-size: 13px;
+  }
+  .block.active    {
+    background: color-mix(in srgb, var(--c) 32%, var(--panel));
+    border-color: var(--c);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 40%, transparent),
+                0 0 24px color-mix(in srgb, var(--c) 18%, transparent);
+    animation: breathe 4.5s ease-in-out infinite;
+  }
+  .block.planned   { background: color-mix(in srgb, var(--c) 8%, transparent); border: 1px dashed color-mix(in srgb, var(--c) 45%, transparent); }
+  .block.planned .t { color: var(--ink-dim); font-weight: 500; }
+  .block.missed    { background: color-mix(in srgb, var(--missed) 10%, transparent); border-color: color-mix(in srgb, var(--missed) 40%, transparent); }
+  .block.missed .t { color: color-mix(in srgb, var(--missed) 70%, var(--ink)); font-weight: 500; }
+  .block.missed .m::after { content: " · ertelendi"; color: var(--missed); }
+
+  @keyframes breathe {
+    0%, 100% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 40%, transparent), 0 0 16px color-mix(in srgb, var(--c) 12%, transparent); }
+    50%      { box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 60%, transparent), 0 0 30px color-mix(in srgb, var(--c) 26%, transparent); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .block.active { animation: none; }
+  }
+
+  .nowline {
+    position: absolute;
+    left: 44px; right: 0;
+    border-top: 1px solid var(--body-p);
+    z-index: 3;
+  }
+  .nowline::before {
+    content: "";
+    position: absolute;
+    left: -5px; top: -4px;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--body-p);
+  }
+
+  /* ---------- Alt bölge: Yol şeridi ---------- */
+
+  .footer {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--line);
+    padding: 18px 48px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    background: color-mix(in srgb, var(--ground) 60%, var(--panel));
+  }
+
+  .path {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .path-label {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-right: 10px;
+  }
+  .stone {
+    width: 20px; height: 20px;
+    border-radius: 6px;
+    background: var(--s, var(--surface));
+    border: 1px solid var(--line);
+  }
+  .stone.gap {
+    background: transparent;
+    border: 1px dashed var(--line);
+    border-radius: 50%;
+    width: 14px; height: 14px;
+    margin: 0 3px;
+  }
+  .stone.today {
+    outline: 1px solid var(--ink-dim);
+    outline-offset: 2px;
+  }
+
+  .stats {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 28px;
+  }
+  .stat { text-align: right; }
+  .stat .v {
+    font-size: 19px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.01em;
+  }
+  .stat .k {
+    font-size: 11px;
+    color: var(--ink-faint);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .legend {
+    display: flex;
+    gap: 18px;
+    padding-left: 28px;
+    border-left: 1px solid var(--line);
+  }
+  .pillar {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12.5px;
+    color: var(--ink-dim);
+  }
+  .pillar i {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: var(--c);
+  }
+  .pillar.fading { opacity: 0.55; }
+  .pillar.fading::after {
+    content: "soluyor";
+    font-size: 10px;
+    color: var(--missed);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  @media (max-width: 880px) {
+    .frame { aspect-ratio: auto; grid-template-columns: 1fr; }
+    .left { border-right: 0; border-bottom: 1px solid var(--line); }
+    .mosaic { min-height: 560px; }
+    .footer { flex-wrap: wrap; padding: 18px 24px; }
+    .stats { margin-left: 0; }
+    .legend { border-left: 0; padding-left: 0; }
+  }
+</style>
+
+<div class="frame">
+  <section class="left">
+    <div class="wordmark">Via <b>·</b> Ethos</div>
+
+    <div class="clock" id="clock">14:37<span class="sec">:08</span></div>
+    <div class="date" id="date">11 Temmuz 2026, Cumartesi</div>
+
+    <div class="virtue">Günün erdemi · <b>Disiplin</b></div>
+
+    <div class="maxim">
+      <div class="maxim-label">Günün düsturu</div>
+      <blockquote>
+        &ldquo;Dışsal bir şey seni rahatsız ediyorsa, acı o şeyin kendisinden değil,
+        senin ona ilişkin yargından gelir; ve o yargıyı her an geri çekmek
+        senin elindedir.&rdquo;
+      </blockquote>
+      <cite>Marcus Aurelius <span>· Düşünceler, VIII.47</span></cite>
+    </div>
+  </section>
+
+  <section class="right">
+    <div class="right-head">
+      <h2>Günün Mozaiği</h2>
+      <div class="progress"><b>5 / 9</b> tamamlandı &nbsp;·&nbsp; <b>3 sa 40 dk</b> odak</div>
+    </div>
+    <div class="mosaic" id="mosaic"></div>
+  </section>
+
+  <footer class="footer">
+    <div class="path" id="path">
+      <span class="path-label">Yol · Son 14 gün</span>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="v">12.480</div>
+        <div class="k">Ethos Puanı</div>
+      </div>
+      <div class="stat">
+        <div class="v">9. gün</div>
+        <div class="k">Kesintisiz</div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span class="pillar" style="--c: var(--mind)"><i></i>Mind</span>
+      <span class="pillar fading" style="--c: var(--body-p)"><i></i>Body</span>
+      <span class="pillar" style="--c: var(--craft)"><i></i>Craft</span>
+      <span class="pillar" style="--c: var(--life)"><i></i>Life</span>
+    </div>
+  </footer>
+</div>
+
+<script>
+  const DAY_START = 6, DAY_END = 24;
+
+  const blocks = [
+    { s: "06:30", e: "07:10", title: "Sabah rutini",                    time: "06:30 – 07:10", pillar: "life",  state: "done" },
+    { s: "07:20", e: "09:00", title: "Derin çalışma · Ürün mimarisi",   time: "07:20 – 09:00 · niyet: veri modelini bitir", pillar: "craft", state: "done" },
+    { s: "09:30", e: "10:30", title: "Ekip toplantısı",                 time: "09:30 – 10:30", pillar: "craft", state: "done" },
+    { s: "11:00", e: "12:00", title: "Okuma · Derin İş",                time: "11:00 – 12:00", pillar: "mind",  state: "done" },
+    { s: "12:30", e: "13:10", title: "Öğle yürüyüşü",                   time: "12:30 – 13:10", pillar: "body",  state: "missed" },
+    { s: "14:00", e: "15:30", title: "Odak · Çeyrek raporu",            time: "14:00 – 15:30 · niyet: ilk taslağı tamamla", pillar: "mind",  state: "active" },
+    { s: "17:00", e: "18:00", title: "Antrenman",                       time: "17:00 – 18:00", pillar: "body",  state: "planned" },
+    { s: "19:30", e: "20:10", title: "Okuma · Düşünceler",              time: "19:30 – 20:10", pillar: "mind",  state: "planned" },
+    { s: "21:30", e: "21:50", title: "Akşam muhasebesi",                time: "21:30 – 21:50", pillar: "life",  state: "planned" },
+  ];
+
+  const stones = [
+    ["craft","mind"], ["mind","life"], ["body","craft"], ["craft"], null,
+    ["mind","craft"], ["life","mind"], ["craft","body"], ["mind"], ["craft","life"],
+    ["mind","craft"], ["life"], ["craft","mind"], ["mind","craft"]
+  ];
+
+  const toH = t => { const [h, m] = t.split(":").map(Number); return h + m / 60; };
+  const pct = h => ((h - DAY_START) / (DAY_END - DAY_START)) * 100;
+
+  const mosaic = document.getElementById("mosaic");
+  let html = "";
+  for (let h = DAY_START; h <= DAY_END; h += 2) {
+    html += `<div class="hourline" style="top:${pct(h)}%">${String(h).padStart(2, "0")}:00</div>`;
+  }
+  for (const b of blocks) {
+    const top = pct(toH(b.s)), height = pct(toH(b.e)) - pct(toH(b.s));
+    html += `<div class="block ${b.state}" style="--c: var(--${b.pillar === "body" ? "body-p" : b.pillar}); top:${top}%; height:${height}%">
+      <span class="t">${b.title}</span><span class="m">${b.time}</span></div>`;
+  }
+  html += `<div class="nowline" id="nowline"></div>`;
+  mosaic.innerHTML = html;
+
+  const path = document.getElementById("path");
+  stones.forEach((mix, i) => {
+    const el = document.createElement("span");
+    if (!mix) { el.className = "stone gap"; }
+    else {
+      el.className = "stone" + (i === stones.length - 1 ? " today" : "");
+      const cs = mix.map(p => `var(--${p === "body" ? "body-p" : p})`);
+      el.style.setProperty("--s", cs.length > 1
+        ? `linear-gradient(135deg, ${cs[0]} 0 50%, ${cs[1]} 50% 100%)`
+        : cs[0]);
+    }
+    path.appendChild(el);
+  });
+
+  function tick() {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mm = String(now.getMinutes()).padStart(2, "0");
+    const ss = String(now.getSeconds()).padStart(2, "0");
+    document.getElementById("clock").innerHTML = `${hh}:${mm}<span class="sec">:${ss}</span>`;
+    document.getElementById("date").textContent =
+      now.toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric", weekday: "long" });
+    const h = Math.min(Math.max(now.getHours() + now.getMinutes() / 60, DAY_START), DAY_END);
+    document.getElementById("nowline").style.top = pct(h) + "%";
+  }
+  tick();
+  setInterval(tick, 1000);
+</script>

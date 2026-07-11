@@ -69,7 +69,34 @@ v2'deki monokrom yön revize edildi; disiplin korunuyor:
 - **Mevsimsel zemin:** Zemin tonu yıl boyunca çok yavaş kayar (kış:
   derin lacivert, bahar: sıcak grafit). Panel "yaşıyor" hisseder.
 
-## 5. Mimarîye Etkisi
+## 5. Ton Rehberi: Mistik Ruh, Kusursuz Kullanışlılık
+
+Netleştirilen ilke: **mistik/felsefi atmosfer korunur; "profesyonellik"
+icranın kalitesinde ve kullanışlılıkta gösterilir.** Felsefe mekanikte,
+içerikte ve dilde yaşar — ama asla kullanım hızının önüne geçmez.
+
+- **Ritüel dili kalır:** Niyet, Mühürle, Düstur, Muhasebe, Yol, Erdem —
+  bu sözlük uygulamanın kimliğidir. Ancak her ritüel teriminin arkasında
+  net, tek dokunuşluk bir eylem durur: "Mühürle" bir buton olarak
+  belirsizlik taşımaz.
+- **Kullanışlılık çıtası (sert kurallar):**
+  - Bir Quick Tick işaretlemek: 1 dokunuş, 0 gezinme.
+  - Odak seansı başlatmak: en fazla 2 dokunuş + isteğe bağlı niyet.
+  - Ritüel hiçbir zaman zorunlu bekletme yaratmaz — atmosfer animasyonları
+    kesilebilir/atlanabilir, akışı asla kilitlemez.
+  - Her ekran tek soruya cevap verir; cevabı 3 saniyede okunamıyorsa
+    ekran fazla kalabalıktır.
+- **İçerik gücü = kaynaklı küratörlük.** Her alıntı eser + bölüm
+  referansıyla verilir (örn. "Marcus Aurelius · Düşünceler, VIII.47").
+  Jenerik motivasyon cümleleri ("Bugün harika olacak!") yasaktır.
+  Alıntı kitaplığı paketle gelir, temalara etiketlenir, duruma göre seçilir.
+- **Mikrometin ilkeleri:** sakin, kısa, fiil odaklı; asla ünlem, asla
+  suçlayıcı dil. Kaçan blok "başarısız" değil "ertelendi"dir.
+- **Görsel referans çıtası:** manastır mimarisinin sükuneti + lüks saat
+  kadranı hassasiyeti. Mistik doku tipografi, renk ve ışıkla kurulur —
+  konfeti ve rozet yağmuruyla değil.
+
+## 6. Mimarîye Etkisi
 
 Mevcut mimari (Tauri v2 + Svelte 5 + SQLite, Rust'ta domain) bu vizyonu
 taşır. Gerekli eklemeler:
