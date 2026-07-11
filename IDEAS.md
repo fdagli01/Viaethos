@@ -137,6 +137,32 @@ silüeti) bir yorumu.
   girişini doğru ayrıştıracak şekilde birleştirildi (önceki sürümde
   hex harfleri regex'i bozup hatalı renklere yol açıyordu).
 
+## 9. Referans Netleşti: Buğday Tarlası Paleti
+
+Ürün sahibi somut bir referans verdi (Van Gogh, "Buğday Tarlasında Yol"
+tarzı): koyu/gece mistik ton değil, **gündüz, sıcak, doygun, kalın
+darbeli** bir kompozisyon. Buna göre manzara üçüncü kez revize edildi:
+
+- **Gökyüzü paleti** canlı Provence mavisine çekildi (öğlen tonları
+  artık `#0e6fc9`/`#2f97dd` gibi doygun mavi-camgöbeği), fırça
+  darbeleri kalınlaştırıldı (4–10px, öncekinin ~2 katı) ve sayısı
+  azaltılıp okunaklılık artırıldı — az ve güçlü darbe, çok ve gürültülü
+  değil. Gündüz paletine beyaz/krem bulut vuruşları eklendi.
+- **Servi yerine yuvarlak yapraklı bir ağaç:** solda, kısa gövde
+  üzerinde yüzlerce küçük oval yaprak lekesinden oluşan dolgun bir
+  taç — referans tablodaki ağacın yorumu. Gece koyulaştıkça yaprak
+  paleti koyu yeşile/siyaha kayıyor.
+- **Dağ silüeti yerine buğday tarlası:** ön planda çim/çayır şeridi ve
+  altında, taranmış gibi tutarlı çapraz yönde binlerce altın/hardal
+  rengi vuruştan oluşan bir tarla — Van Gogh'un karakteristik "taranmış"
+  buğday dokusu. Zemin, gece ilerledikçe altın tondan koyu çiviteye
+  kayan ayrı bir alt-boyama üzerine oturuyor (önceki sürümde ufuk rengi
+  kullanılıyordu, gün ortasında neredeyse beyaza çıkıp tarlayı soluk
+  gösteriyordu — düzeltildi).
+- İç Hava Durumu mekaniği aynı kaldı (Clear/Radiant/Heavy/Stormy fırça
+  davranışını ve paleti değiştiriyor); yalnızca "varsayılan" görsel dil
+  artık bu referansa sadık.
+
 ## 5. Ton Rehberi: Mistik Ruh, Kusursuz Kullanışlılık
 
 Netleştirilen ilke: **mistik/felsefi atmosfer korunur; "profesyonellik"

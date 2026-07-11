@@ -440,15 +440,15 @@
   const cv = document.getElementById("painting");
   const ctx = cv.getContext("2d");
 
-  // Sky keyframes: [hour, top, middle, horizon]
+  // Sky keyframes: [hour, top, middle, horizon] — bold Provence blue by day
   const SKY = [
     [0,  "#060814", "#0b1130", "#181c44"],
     [4.5,"#0a0f2e", "#231b4e", "#4c2a56"],
-    [6,  "#26355e", "#8a5570", "#e89a62"],
-    [7.5,"#3d6ba8", "#8fa0c8", "#f6c98a"],
-    [11, "#4f86c8", "#86b0dd", "#e9dcbc"],
-    [15, "#4a7ec0", "#88aeda", "#eed9ae"],
-    [18, "#3d5a9e", "#b56a78", "#f4a05e"],
+    [6,  "#1c5590", "#3a7ab8", "#e89a62"],
+    [7.5,"#1273c4", "#2f92d6", "#f6c98a"],
+    [11, "#0e6fc9", "#2f97dd", "#eaf3ea"],
+    [15, "#0d6cc6", "#2f95db", "#eef2df"],
+    [18, "#1a5aa8", "#b56a78", "#f4a05e"],
     [19.5,"#252a66","#6e3f78", "#d96a56"],
     [21, "#0e1338", "#2c2158", "#5e3260"],
     [24, "#060814", "#0b1130", "#181c44"],
@@ -456,10 +456,10 @@
 
   // Turbulence: how violently the brushwork swirls per inner-weather state
   const WEATHER = {
-    clear:   { filter: "none",                                            mist: 0.10, amp: 0.55, freq: 1.00, len: 46, count: 1.00, vortex: 0.55, pal: ["#3d6bb0","#5f8fc9","#2c4a86","#88b3dd"] },
-    radiant: { filter: "saturate(1.3) brightness(1.12)",                  mist: 0.04, amp: 0.70, freq: 1.15, len: 52, count: 1.20, vortex: 0.75, pal: ["#ffd23f","#ff9d3d","#5f8fc9","#ffe98a"] },
-    heavy:   { filter: "saturate(0.5) brightness(0.82)",                  mist: 0.32, amp: 0.35, freq: 0.70, len: 34, count: 0.70, vortex: 0.35, pal: ["#2b3252","#3a3f5c","#20223a","#454a68"] },
-    stormy:  { filter: "saturate(0.55) brightness(0.7) contrast(1.12)",   mist: 0.24, amp: 1.05, freq: 1.75, len: 60, count: 1.55, vortex: 1.15, pal: ["#1c2140","#3d2f66","#0f1230","#5a3a6e"] },
+    clear:   { filter: "none",                                            mist: 0.06, amp: 0.55, freq: 1.00, len: 62, count: 0.85, vortex: 0.55, pal: ["#1c6fc2","#3f93df","#eef3f6","#0e4f96"] },
+    radiant: { filter: "saturate(1.25) brightness(1.1)",                  mist: 0.03, amp: 0.70, freq: 1.15, len: 68, count: 0.95, vortex: 0.75, pal: ["#ffd23f","#ff9d3d","#3f93df","#fff3c4"] },
+    heavy:   { filter: "saturate(0.5) brightness(0.8)",                   mist: 0.28, amp: 0.35, freq: 0.70, len: 46, count: 0.65, vortex: 0.35, pal: ["#2b3252","#3a3f5c","#20223a","#454a68"] },
+    stormy:  { filter: "saturate(0.6) brightness(0.68) contrast(1.12)",   mist: 0.22, amp: 1.05, freq: 1.75, len: 78, count: 1.20, vortex: 1.15, pal: ["#1c2140","#3d2f66","#0f1230","#5a3a6e"] },
   };
 
   let weather = "clear";
@@ -492,22 +492,6 @@
   function rng(seed) {
     let s = seed;
     return () => (s = (s * 16807) % 2147483647) / 2147483647;
-  }
-
-  function ridge(seed, W, baseY, amp) {
-    const r = rng(seed);
-    const f1 = 1.5 + r() * 1.5, f2 = 4 + r() * 3, f3 = 9 + r() * 5;
-    const p1 = r() * 6.28, p2 = r() * 6.28, p3 = r() * 6.28;
-    const pts = [];
-    for (let x = 0; x <= W; x += 6) {
-      const u = x / W;
-      const y = baseY
-        + Math.sin(u * f1 * Math.PI + p1) * amp
-        + Math.sin(u * f2 * Math.PI + p2) * amp * 0.4
-        + Math.sin(u * f3 * Math.PI + p3) * amp * 0.15;
-      pts.push([x, y]);
-    }
-    return pts;
   }
 
   function darkness(h) { // 0 = full day, 1 = full night
@@ -564,17 +548,16 @@
   function paintSwirlSky(ctx, W, horizonY, wx, h, seedBase) {
     const field = makeField(seedBase, wx.vortex, wx.freq);
     const r = rng(seedBase + 1);
-    const n = Math.round(260 * wx.count);
+    const n = Math.round(150 * wx.count);
+    const base = skyAt(h);
     for (let i = 0; i < n; i++) {
-      const u = r(), v = r() * 0.9;
+      const u = r(), v = r() * 0.92;
       const x = u * W, y = v * horizonY;
-      const base = skyAt(h);
       const under = mixHex(base[0], base[2], v);
-      const col = mixRgb(under.startsWith("rgb") ? under : under,
-        wx.pal[Math.floor(r() * wx.pal.length)], 0.4 + r() * 0.35);
+      const col = mixRgb(under, wx.pal[Math.floor(r() * wx.pal.length)], 0.35 + r() * 0.4);
       const ang = field(u, v) + (r() - 0.5) * wx.amp;
-      paintStroke(ctx, W, horizonY, x, y, wx.len * (0.6 + r() * 0.8), ang, field,
-        1.6 + r() * 3.2, col, 0.35 + r() * 0.35);
+      paintStroke(ctx, W, horizonY, x, y, wx.len * (0.65 + r() * 0.7), ang, field,
+        4 + r() * 6.5, col, 0.5 + r() * 0.4);
     }
     ctx.globalAlpha = 1;
   }
@@ -609,20 +592,83 @@
     ctx.globalAlpha = 1;
   }
 
-  function paintCypress(ctx, W, H, horizonY, hor, seedBase) {
-    const field = makeField(seedBase + 40, 0.3, 0.8);
-    const baseX = W * 0.09, baseY = H;
-    const topY = horizonY - H * 0.28;
-    const dark = mixHex("#0a1208", hor.startsWith("rgb") ? "#141225" : hor, 0.2);
+  // A round, leafy tree — clustered canopy dabs over a short dark trunk
+  function paintTree(ctx, W, groundY, dk, seedBase) {
     const r = rng(seedBase + 41);
-    for (let i = 0; i < 90; i++) {
-      const t = r();
-      const y = baseY - t * (baseY - topY);
-      const widthAt = (1 - t) * 34 + 4;
-      const x = baseX + Math.sin(t * 9 + seedBase * 0.01) * widthAt * 0.5 + (r() - 0.5) * widthAt;
-      const ang = field(x / W, y / H) - Math.PI / 2 + (r() - 0.5) * 0.6;
-      paintStroke(ctx, W, H, x, y, 20 + r() * 18, ang, field, 2 + r() * 2.5,
-        mixHex("#0a1208", "#233a1c", r()), 0.5 + r() * 0.35);
+    const trunkX = W * 0.155;
+    const canopyCx = trunkX + W * 0.01, canopyCy = groundY - groundY * 0.30;
+    const canopyR = groundY * 0.26;
+
+    // trunk
+    for (let i = 0; i < 8; i++) {
+      const t = i / 7;
+      const y0 = groundY + 10 - t * (groundY + 10 - canopyCy);
+      ctx.strokeStyle = mixHex("#2a1c10", "#160e08", r());
+      ctx.lineWidth = 13 - t * 8;
+      ctx.lineCap = "round";
+      ctx.globalAlpha = 0.9;
+      ctx.beginPath();
+      ctx.moveTo(trunkX + Math.sin(t * 4) * 3, y0 + 16);
+      ctx.lineTo(trunkX + Math.sin((t + 0.15) * 4) * 3, y0 - 16);
+      ctx.stroke();
+    }
+
+    // leafy canopy: night dims it, day makes it vivid — like the reference
+    const greensDay = ["#1f3d18", "#2e5a22", "#3f7a2a", "#5c8f2a", "#274a1c", "#6f9a3a"];
+    const greensNight = ["#0c1a10", "#132414", "#182e18", "#0e1c10"];
+    const greens = mixColors(greensDay, greensNight, dk);
+    for (let i = 0; i < 190; i++) {
+      const ang = r() * Math.PI * 2, rad = Math.sqrt(r()) * canopyR;
+      const x = canopyCx + Math.cos(ang) * rad * 1.2;
+      const y = canopyCy + Math.sin(ang) * rad * 0.88 - rad * 0.12;
+      const size = 4 + r() * 9;
+      ctx.fillStyle = greens[Math.floor(r() * greens.length)];
+      ctx.globalAlpha = 0.6 + r() * 0.35;
+      ctx.beginPath();
+      ctx.ellipse(x, y, size, size * 0.68, r() * Math.PI, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function mixColors(dayList, nightList, dk) {
+    if (dk < 0.08) return dayList;
+    if (dk > 0.75) return nightList;
+    return dk > 0.4 ? nightList.concat(dayList.slice(0, 2)) : dayList;
+  }
+
+  // The wheat field: combed, diagonal impasto strokes filling the foreground
+  function paintWheatField(ctx, W, H, groundY, seedBase) {
+    const r = rng(seedBase + 61);
+    const meadowH = (H - groundY) * 0.24;
+    const meadowGreens = ["#3f6b2a", "#547d34", "#2e5420", "#6a8a3c"];
+    for (let i = 0; i < 130; i++) {
+      const x = r() * W, y = groundY + r() * meadowH;
+      const len = 10 + r() * 16, ang = -0.28 + (r() - 0.5) * 0.7;
+      ctx.strokeStyle = meadowGreens[Math.floor(r() * meadowGreens.length)];
+      ctx.lineWidth = 2 + r() * 3;
+      ctx.lineCap = "round";
+      ctx.globalAlpha = 0.55 + r() * 0.35;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + Math.cos(ang) * len, y + Math.sin(ang) * len);
+      ctx.stroke();
+    }
+    const wheatTop = groundY + meadowH;
+    const wheatGold = ["#e8c34a", "#f0d878", "#c9a23a", "#f7e6a0", "#b8860b", "#dab13a"];
+    for (let i = 0; i < 340; i++) {
+      const x = r() * W, y = wheatTop + r() * (H - wheatTop);
+      const depth = (y - wheatTop) / (H - wheatTop);
+      const len = 12 + depth * 16 + r() * 10;
+      const ang = -0.32 + (r() - 0.5) * 0.35;
+      ctx.strokeStyle = wheatGold[Math.floor(r() * wheatGold.length)];
+      ctx.lineWidth = 1.5 + depth * 3 + r() * 2;
+      ctx.lineCap = "round";
+      ctx.globalAlpha = 0.55 + depth * 0.3 + r() * 0.15;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + Math.cos(ang) * len, y + Math.sin(ang) * len);
+      ctx.stroke();
     }
     ctx.globalAlpha = 1;
   }
@@ -669,40 +715,22 @@
     const dk = darkness(h);
     paintStars(ctx, W, horizonY, dk, 900);
 
-    // Mountain ridges — dabbed brushstroke silhouettes lit by the sky
-    const ridges = [
-      { seed: 11, base: 0.60, amp: 0.055, t: 0.42 },
-      { seed: 23, base: 0.66, amp: 0.075, t: 0.62 },
-      { seed: 47, base: 0.74, amp: 0.09,  t: 0.80 },
-      { seed: 61, base: 0.85, amp: 0.07,  t: 0.92 },
-    ];
-    for (const rd of ridges) {
-      const pts = ridge(rd.seed, W, H * rd.base, H * rd.amp);
-      ctx.beginPath();
-      ctx.moveTo(0, H);
-      for (const [x, y] of pts) ctx.lineTo(x, y);
-      ctx.lineTo(W, H);
-      ctx.closePath();
-      ctx.fillStyle = mixRgb(hor.startsWith("rgb") ? hor : hor, "rgb(10,8,20)", rd.t);
-      ctx.fill();
-      const rr = rng(rd.seed + 5);
-      for (let i = 0; i < 40; i++) {
-        const px = rr() * W;
-        const py = ridge(rd.seed, W, H * rd.base, H * rd.amp)[Math.floor(px / 6)]?.[1] ?? H * rd.base;
-        ctx.globalAlpha = 0.18 + rr() * 0.2;
-        ctx.strokeStyle = mixRgb(hor, "#05040a", rd.t * 0.6);
-        ctx.lineWidth = 2 + rr() * 3;
-        ctx.lineCap = "round";
-        ctx.beginPath();
-        ctx.moveTo(px, py - 3);
-        ctx.lineTo(px + (rr() - 0.5) * 14, py + 10 + rr() * 16);
-        ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-    }
+    // Underpainting for the ground: warm gold by day, sinking to indigo at night
+    const groundBase = mixRgb("rgb(196,167,74)", "rgb(14,16,28)", Math.min(dk * 1.15, 0.92));
+    const groundGrad = ctx.createLinearGradient(0, horizonY, 0, H);
+    groundGrad.addColorStop(0, mixRgb(groundBase, "rgb(120,140,70)", 0.3));
+    groundGrad.addColorStop(1, groundBase);
+    ctx.fillStyle = groundGrad;
+    ctx.fillRect(0, horizonY - 2, W, H - horizonY + 2);
 
-    // A lone cypress — dark upward flame of impasto strokes, foreground left
-    paintCypress(ctx, W, H, horizonY, hor, 500);
+    // The wheat field — combed golden strokes, like the reference painting
+    ctx.save();
+    ctx.globalAlpha = 1 - dk * 0.5;
+    paintWheatField(ctx, W, H, horizonY, 500);
+    ctx.restore();
+
+    // A round leafy tree, foreground left — the painting's anchor
+    paintTree(ctx, W, horizonY, dk, 500);
 
     // Valley mist
     ctx.save();
