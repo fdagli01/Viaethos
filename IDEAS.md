@@ -163,6 +163,33 @@ darbeli** bir kompozisyon. Buna göre manzara üçüncü kez revize edildi:
   davranışını ve paleti değiştiriyor); yalnızca "varsayılan" görsel dil
   artık bu referansa sadık.
 
+## 10. Dolu Tuval: Tam Sahne
+
+Dördüncü revizyon ("daha dolu dolu olsun" + üç ek referans: Arles
+yakınında ağaçlı yol, Les Alyscamps, Provence'ta çiftlik evi): tuvalin
+her santimi boyalı, eksiksiz bir kompozisyon.
+
+- **Gökyüzü tam kaplama:** jitter'lı ızgara geçişi + üstüne serbest
+  vurgu geçişi — düz gradyan artık hiçbir yerde görünmüyor, gök baştan
+  başa çırpıntılı impasto.
+- **Sarı çiftlik evi:** turuncu çatılı, mavi-yeşil kapı/pencereli iki
+  bloklu ev ufka yerleşti; **gece olunca bir penceresi sıcak sarı
+  yanıyor** — panelin en insani detayı.
+- **Çayır bandı:** ufuk çizgisinde koyu çit-çalı sırası, altında parlak
+  yeşil çayır vuruşları ve beyaz çiçek + kırmızı gelincik lekeleri
+  (referanstaki çiçekli şerit).
+- **Buğday tarlası yoğunlaştı:** ızgara garantili tam kaplama, altın
+  tonların arasına mavi-gri saplar ve yeşil tutamlar serpiştirildi —
+  birebir referansın dokusu.
+- **Patika:** sol alttan eve doğru kıvrılan krem/açık sarı taranmış
+  vuruşlardan yol ("Via"nın kendisi — tablodaki yol, uygulamanın
+  metaforunu taşıyor).
+- **Ağaç büyüdü ve koyulaştı:** çift gövde (arkada ince ikinci gövde —
+  ağaçlı yol hissi), 500+ yaprak lekesi, koyu yeşil kütlenin içinde
+  sarı/kızıl kıvılcım lekeler; gövdelerde referanstaki mavi ton.
+- Gece tüm sahne çivite gömülür, yıldız haleleri ve evin penceresi
+  kalır — gündüz Arles, gece Yıldızlı Gece.
+
 ## 5. Ton Rehberi: Mistik Ruh, Kusursuz Kullanışlılık
 
 Netleştirilen ilke: **mistik/felsefi atmosfer korunur; "profesyonellik"

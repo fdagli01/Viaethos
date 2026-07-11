@@ -545,19 +545,104 @@
     ctx.stroke();
   }
 
+  // Dense impasto sky: every inch covered in choppy strokes, no gradient showing
   function paintSwirlSky(ctx, W, horizonY, wx, h, seedBase) {
     const field = makeField(seedBase, wx.vortex, wx.freq);
     const r = rng(seedBase + 1);
-    const n = Math.round(150 * wx.count);
     const base = skyAt(h);
+    // grid pass guarantees full coverage; jitter breaks the grid feel
+    const cell = 26;
+    const cols = Math.ceil(W / cell) + 1, rows = Math.ceil(horizonY / cell) + 1;
+    for (let gy = 0; gy < rows; gy++) {
+      for (let gx = 0; gx < cols; gx++) {
+        const x = gx * cell + (r() - 0.5) * cell * 1.6;
+        const y = gy * cell + (r() - 0.5) * cell * 1.6;
+        const u = x / W, v = Math.max(0, Math.min(1, y / horizonY));
+        const under = mixHex(base[0], base[2], v);
+        const col = mixRgb(under, wx.pal[Math.floor(r() * wx.pal.length)], 0.3 + r() * 0.45);
+        const ang = field(u, v) + (r() - 0.5) * wx.amp;
+        paintStroke(ctx, W, horizonY, x, y, wx.len * (0.5 + r() * 0.6), ang, field,
+          5 + r() * 6, col, 0.55 + r() * 0.4);
+      }
+    }
+    // second loose pass: brighter accents riding on top
+    const n = Math.round(220 * wx.count);
     for (let i = 0; i < n; i++) {
-      const u = r(), v = r() * 0.92;
+      const u = r(), v = r() * 0.95;
       const x = u * W, y = v * horizonY;
       const under = mixHex(base[0], base[2], v);
-      const col = mixRgb(under, wx.pal[Math.floor(r() * wx.pal.length)], 0.35 + r() * 0.4);
+      const col = mixRgb(under, wx.pal[Math.floor(r() * wx.pal.length)], 0.5 + r() * 0.4);
       const ang = field(u, v) + (r() - 0.5) * wx.amp;
-      paintStroke(ctx, W, horizonY, x, y, wx.len * (0.65 + r() * 0.7), ang, field,
-        4 + r() * 6.5, col, 0.5 + r() * 0.4);
+      paintStroke(ctx, W, horizonY, x, y, wx.len * (0.55 + r() * 0.6), ang, field,
+        4 + r() * 5, col, 0.4 + r() * 0.35);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // The yellow farmhouse with orange roof, tucked by the horizon
+  function paintHouse(ctx, W, horizonY, dk, seedBase) {
+    const r = rng(seedBase + 71);
+    const hw = W * 0.085, hh = horizonY * 0.16;
+    const hx = W * 0.30, hy = horizonY - hh;
+    const dim = c => mixHex(c, "#0e1020", Math.min(dk * 1.05, 0.82));
+    const jitterRect = (x, y, w, hgt, col, n) => {
+      ctx.fillStyle = col;
+      for (let i = 0; i < n; i++) {
+        const sx = x + r() * w, sy = y + r() * hgt;
+        ctx.globalAlpha = 0.5 + r() * 0.45;
+        ctx.fillRect(sx - 2, sy - 2, 5 + r() * 8, 3 + r() * 4);
+      }
+      ctx.globalAlpha = 1;
+    };
+    // walls: two blocks like the reference farmhouse
+    ctx.fillStyle = dim("#e8c04a");
+    ctx.fillRect(hx, hy, hw, hh);
+    ctx.fillRect(hx + hw, hy + hh * 0.22, hw * 0.55, hh * 0.78);
+    jitterRect(hx, hy, hw * 1.5, hh, dim("#f2d675"), 40);
+    jitterRect(hx, hy, hw * 1.5, hh, dim("#c99a2e"), 22);
+    // roofs
+    ctx.fillStyle = dim("#c96a3a");
+    ctx.beginPath();
+    ctx.moveTo(hx - 6, hy); ctx.lineTo(hx + hw * 0.5, hy - hh * 0.42); ctx.lineTo(hx + hw + 6, hy);
+    ctx.closePath(); ctx.fill();
+    ctx.fillRect(hx + hw - 2, hy + hh * 0.22 - hh * 0.14, hw * 0.55 + 6, hh * 0.15);
+    jitterRect(hx - 4, hy - hh * 0.4, hw + 8, hh * 0.38, dim("#e08248"), 18);
+    // windows + door, blue-green like the reference
+    ctx.fillStyle = dim("#3a7a8c");
+    ctx.fillRect(hx + hw * 0.14, hy + hh * 0.3, hw * 0.15, hh * 0.3);
+    ctx.fillRect(hx + hw * 0.55, hy + hh * 0.3, hw * 0.15, hh * 0.3);
+    ctx.fillRect(hx + hw * 0.33, hy + hh * 0.5, hw * 0.16, hh * 0.5);
+    ctx.fillRect(hx + hw * 1.12, hy + hh * 0.5, hw * 0.14, hh * 0.35);
+    // lit window at night — the house keeps a small warm vigil
+    if (dk > 0.4) {
+      ctx.fillStyle = "#ffca5f";
+      ctx.globalAlpha = (dk - 0.4) * 1.4;
+      ctx.fillRect(hx + hw * 0.55, hy + hh * 0.3, hw * 0.15, hh * 0.3);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // The pale path curving from the bottom-left toward the house
+  function paintPath(ctx, W, H, horizonY, dk, seedBase) {
+    const r = rng(seedBase + 81);
+    const dim = c => mixHex(c, "#101224", Math.min(dk * 1.0, 0.8));
+    const cream = ["#e9d9a0", "#dcc783", "#f2e6bb", "#c9b370"];
+    for (let i = 0; i < 260; i++) {
+      const t = r();                        // 0 at horizon, 1 at bottom
+      const yy = horizonY + t * t * (H - horizonY);
+      const center = W * (0.34 - t * 0.30); // curves out to the left edge
+      const halfw = 8 + t * t * W * 0.075;
+      const x = center + (r() - 0.5) * 2 * halfw;
+      const len = 6 + t * 26 + r() * 10;
+      const ang = 0.9 + (r() - 0.5) * 0.5;  // strokes lie along the path
+      ctx.strokeStyle = dim(cream[Math.floor(r() * cream.length)]);
+      ctx.lineWidth = 2 + t * 4 + r() * 2;
+      ctx.lineCap = "round";
+      ctx.globalAlpha = 0.5 + r() * 0.4;
+      ctx.beginPath();
+      ctx.moveTo(x, yy);
+      ctx.lineTo(x + Math.cos(ang) * len * 0.4, yy + Math.sin(ang) * len);
+      ctx.stroke();
     }
     ctx.globalAlpha = 1;
   }
@@ -592,83 +677,123 @@
     ctx.globalAlpha = 1;
   }
 
-  // A round, leafy tree — clustered canopy dabs over a short dark trunk
+  // A big, dense leafy tree — the painting's left anchor, like the reference
   function paintTree(ctx, W, groundY, dk, seedBase) {
     const r = rng(seedBase + 41);
-    const trunkX = W * 0.155;
-    const canopyCx = trunkX + W * 0.01, canopyCy = groundY - groundY * 0.30;
-    const canopyR = groundY * 0.26;
+    const trunkX = W * 0.15;
+    const canopyCx = trunkX + W * 0.015, canopyCy = groundY - groundY * 0.36;
+    const canopyR = groundY * 0.34;
+    const dim = c => mixHex(c, "#0a0e14", Math.min(dk * 1.1, 0.85));
 
-    // trunk
-    for (let i = 0; i < 8; i++) {
-      const t = i / 7;
-      const y0 = groundY + 10 - t * (groundY + 10 - canopyCy);
-      ctx.strokeStyle = mixHex("#2a1c10", "#160e08", r());
-      ctx.lineWidth = 13 - t * 8;
-      ctx.lineCap = "round";
-      ctx.globalAlpha = 0.9;
-      ctx.beginPath();
-      ctx.moveTo(trunkX + Math.sin(t * 4) * 3, y0 + 16);
-      ctx.lineTo(trunkX + Math.sin((t + 0.15) * 4) * 3, y0 - 16);
-      ctx.stroke();
+    // trunk + a second slimmer trunk behind (avenue feel), blue-tinted bark
+    for (const [tx, wdt] of [[trunkX, 15], [trunkX + W * 0.055, 8]]) {
+      for (let i = 0; i < 9; i++) {
+        const t = i / 8;
+        const y0 = groundY + 14 - t * (groundY + 14 - canopyCy);
+        ctx.strokeStyle = dim(r() > 0.5 ? "#4a6a8a" : "#2e2418");
+        ctx.lineWidth = wdt - t * (wdt * 0.6);
+        ctx.lineCap = "round";
+        ctx.globalAlpha = 0.85;
+        ctx.beginPath();
+        ctx.moveTo(tx + Math.sin(t * 4) * 4, y0 + 18);
+        ctx.lineTo(tx + Math.sin((t + 0.15) * 4) * 4, y0 - 18);
+        ctx.stroke();
+      }
     }
 
-    // leafy canopy: night dims it, day makes it vivid — like the reference
-    const greensDay = ["#1f3d18", "#2e5a22", "#3f7a2a", "#5c8f2a", "#274a1c", "#6f9a3a"];
-    const greensNight = ["#0c1a10", "#132414", "#182e18", "#0e1c10"];
-    const greens = mixColors(greensDay, greensNight, dk);
-    for (let i = 0; i < 190; i++) {
+    // dense canopy: deep greens with warm sparks (yellow/red dabs in the mass)
+    const greens = ["#1f3d18", "#2e5a22", "#3f7a2a", "#274a1c", "#163012", "#4c7a26"];
+    const sparks = ["#c9a23a", "#b0522e", "#6f9a3a", "#8aab4a"];
+    for (let i = 0; i < 520; i++) {
       const ang = r() * Math.PI * 2, rad = Math.sqrt(r()) * canopyR;
-      const x = canopyCx + Math.cos(ang) * rad * 1.2;
-      const y = canopyCy + Math.sin(ang) * rad * 0.88 - rad * 0.12;
-      const size = 4 + r() * 9;
-      ctx.fillStyle = greens[Math.floor(r() * greens.length)];
-      ctx.globalAlpha = 0.6 + r() * 0.35;
+      const x = canopyCx + Math.cos(ang) * rad * 1.25;
+      const y = canopyCy + Math.sin(ang) * rad * 0.9 - rad * 0.1;
+      const size = 4 + r() * 10;
+      const warm = r() > 0.86;
+      ctx.fillStyle = dim(warm ? sparks[Math.floor(r() * sparks.length)]
+                               : greens[Math.floor(r() * greens.length)]);
+      ctx.globalAlpha = 0.55 + r() * 0.4;
       ctx.beginPath();
-      ctx.ellipse(x, y, size, size * 0.68, r() * Math.PI, 0, Math.PI * 2);
+      ctx.ellipse(x, y, size, size * 0.66, r() * Math.PI, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
   }
 
-  function mixColors(dayList, nightList, dk) {
-    if (dk < 0.08) return dayList;
-    if (dk > 0.75) return nightList;
-    return dk > 0.4 ? nightList.concat(dayList.slice(0, 2)) : dayList;
-  }
-
-  // The wheat field: combed, diagonal impasto strokes filling the foreground
-  function paintWheatField(ctx, W, H, groundY, seedBase) {
-    const r = rng(seedBase + 61);
-    const meadowH = (H - groundY) * 0.24;
-    const meadowGreens = ["#3f6b2a", "#547d34", "#2e5420", "#6a8a3c"];
-    for (let i = 0; i < 130; i++) {
-      const x = r() * W, y = groundY + r() * meadowH;
-      const len = 10 + r() * 16, ang = -0.28 + (r() - 0.5) * 0.7;
-      ctx.strokeStyle = meadowGreens[Math.floor(r() * meadowGreens.length)];
+  // Horizon band: distant hedgerow + green meadow with white/red flower dabs
+  function paintMeadow(ctx, W, horizonY, dk, seedBase) {
+    const r = rng(seedBase + 51);
+    const dim = c => mixHex(c, "#0c101c", Math.min(dk * 1.05, 0.85));
+    const bandH = horizonY * 0.075;
+    // distant dark hedgerow right at the horizon line
+    const hedge = ["#1e4a24", "#173a1d", "#2a5c2e"];
+    for (let i = 0; i < 220; i++) {
+      const x = r() * W, y = horizonY - 2 + r() * 6;
+      ctx.fillStyle = dim(hedge[Math.floor(r() * hedge.length)]);
+      ctx.globalAlpha = 0.5 + r() * 0.4;
+      ctx.beginPath();
+      ctx.ellipse(x, y, 5 + r() * 14, 3 + r() * 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // bright green meadow strokes
+    const grass = ["#2f7a2e", "#3f9a38", "#25601f", "#57aa42", "#1e6f4a"];
+    for (let i = 0; i < 420; i++) {
+      const x = r() * W, y = horizonY + 2 + r() * bandH;
+      const len = 6 + r() * 14;
+      ctx.strokeStyle = dim(grass[Math.floor(r() * grass.length)]);
       ctx.lineWidth = 2 + r() * 3;
       ctx.lineCap = "round";
-      ctx.globalAlpha = 0.55 + r() * 0.35;
+      ctx.globalAlpha = 0.55 + r() * 0.4;
       ctx.beginPath();
       ctx.moveTo(x, y);
-      ctx.lineTo(x + Math.cos(ang) * len, y + Math.sin(ang) * len);
+      ctx.lineTo(x + (r() - 0.5) * len, y + r() * 5 - 2);
       ctx.stroke();
     }
-    const wheatTop = groundY + meadowH;
-    const wheatGold = ["#e8c34a", "#f0d878", "#c9a23a", "#f7e6a0", "#b8860b", "#dab13a"];
-    for (let i = 0; i < 340; i++) {
-      const x = r() * W, y = wheatTop + r() * (H - wheatTop);
-      const depth = (y - wheatTop) / (H - wheatTop);
-      const len = 12 + depth * 16 + r() * 10;
-      const ang = -0.32 + (r() - 0.5) * 0.35;
-      ctx.strokeStyle = wheatGold[Math.floor(r() * wheatGold.length)];
-      ctx.lineWidth = 1.5 + depth * 3 + r() * 2;
-      ctx.lineCap = "round";
-      ctx.globalAlpha = 0.55 + depth * 0.3 + r() * 0.15;
+    // white blossoms + scattered red poppies along the meadow's lower edge
+    for (let i = 0; i < 90; i++) {
+      const x = r() * W, y = horizonY + bandH * (0.7 + r() * 0.5);
+      const poppy = r() > 0.75;
+      ctx.fillStyle = dim(poppy ? "#c43a2a" : "#f2ede0");
+      ctx.globalAlpha = (0.5 + r() * 0.4) * (1 - dk * 0.6);
       ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + Math.cos(ang) * len, y + Math.sin(ang) * len);
-      ctx.stroke();
+      ctx.ellipse(x, y, 2.5 + r() * 4, 2 + r() * 3, r() * Math.PI, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // The wheat field: dense combed impasto with blue-grey and green accents
+  function paintWheatField(ctx, W, H, groundY, dk, seedBase) {
+    const r = rng(seedBase + 61);
+    const dim = c => mixHex(c, "#0e1020", Math.min(dk * 0.9, 0.75));
+    const wheatTop = groundY + (H - groundY) * 0.18;
+    const gold = ["#e8c34a", "#f0d878", "#c9a23a", "#f7e6a0", "#dab13a", "#e6cf6f"];
+    const accent = ["#8aa0c9", "#6f86b8", "#a9b8d9"];   // the blue-grey stalks
+    const tufts = ["#5c7a2e", "#48651f", "#6f8a3a"];    // green tufts in the wheat
+    // base golden combing — dense, guaranteed coverage via grid + jitter
+    const cell = 16;
+    const cols = Math.ceil(W / cell) + 1;
+    const rows = Math.ceil((H - wheatTop) / cell) + 1;
+    for (let gy = 0; gy < rows; gy++) {
+      for (let gx = 0; gx < cols; gx++) {
+        const x = gx * cell + (r() - 0.5) * cell * 1.5;
+        const y = wheatTop + gy * cell + (r() - 0.5) * cell * 1.5;
+        const depth = Math.max(0, Math.min(1, (y - wheatTop) / (H - wheatTop)));
+        const len = 12 + depth * 22 + r() * 10;
+        const ang = -0.35 + (r() - 0.5) * 0.3 - depth * 0.15;
+        const pick = r();
+        const col = pick > 0.9 ? accent[Math.floor(r() * accent.length)]
+                  : pick > 0.82 ? tufts[Math.floor(r() * tufts.length)]
+                  : gold[Math.floor(r() * gold.length)];
+        ctx.strokeStyle = dim(col);
+        ctx.lineWidth = 2 + depth * 3.5 + r() * 2;
+        ctx.lineCap = "round";
+        ctx.globalAlpha = 0.5 + depth * 0.3 + r() * 0.2;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + Math.cos(ang) * len, y + Math.sin(ang) * len);
+        ctx.stroke();
+      }
     }
     ctx.globalAlpha = 1;
   }
@@ -718,18 +843,18 @@
     // Underpainting for the ground: warm gold by day, sinking to indigo at night
     const groundBase = mixRgb("rgb(196,167,74)", "rgb(14,16,28)", Math.min(dk * 1.15, 0.92));
     const groundGrad = ctx.createLinearGradient(0, horizonY, 0, H);
-    groundGrad.addColorStop(0, mixRgb(groundBase, "rgb(120,140,70)", 0.3));
+    groundGrad.addColorStop(0, mixRgb(groundBase, "rgb(70,120,60)", 0.4));
+    groundGrad.addColorStop(0.2, mixRgb(groundBase, "rgb(120,140,70)", 0.25));
     groundGrad.addColorStop(1, groundBase);
     ctx.fillStyle = groundGrad;
     ctx.fillRect(0, horizonY - 2, W, H - horizonY + 2);
 
-    // The wheat field — combed golden strokes, like the reference painting
-    ctx.save();
-    ctx.globalAlpha = 1 - dk * 0.5;
-    paintWheatField(ctx, W, H, horizonY, 500);
-    ctx.restore();
-
-    // A round leafy tree, foreground left — the painting's anchor
+    // The scene, back to front: house by the horizon, meadow band over it,
+    // dense wheat, the pale path cutting through, then the big tree in front
+    paintHouse(ctx, W, horizonY, dk, 500);
+    paintMeadow(ctx, W, horizonY, dk, 500);
+    paintWheatField(ctx, W, H, horizonY, dk, 500);
+    paintPath(ctx, W, H, horizonY, dk, 500);
     paintTree(ctx, W, horizonY, dk, 500);
 
     // Valley mist
