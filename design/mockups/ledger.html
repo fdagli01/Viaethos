@@ -1,0 +1,495 @@
+<title>Via Ethos — The Ledger</title>
+<style>
+  :root {
+    --surface: #0d1118;
+    --card: #151b26;
+    --card-line: #232c3c;
+    --ink: #e9e5db;
+    --ink-dim: #a7adb8;
+    --ink-faint: #6d7480;
+    --grid: rgba(233, 229, 219, 0.07);
+    --axis: rgba(233, 229, 219, 0.25);
+    /* chart palette — validated for dark surface (OKLCH band, CVD, contrast) */
+    --c-mind: #3b7fd9;
+    --c-body: #d94f38;
+    --c-craft: #b8811f;
+    --c-life: #2a9a62;
+    --serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+    --sans: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--surface);
+    color: var(--ink);
+    font-family: var(--sans);
+    padding: 28px clamp(16px, 4vw, 48px) 48px;
+  }
+
+  .head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    max-width: 1240px;
+    margin: 0 auto 6px;
+  }
+  .head h1 {
+    margin: 0;
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: clamp(22px, 2.6vw, 30px);
+  }
+  .head h1 small {
+    font-size: 0.55em;
+    color: var(--ink-faint);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-family: var(--sans);
+    margin-left: 12px;
+  }
+  .filters { display: flex; gap: 8px; }
+  .filters button {
+    font-family: var(--sans);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--card-line);
+    background: transparent;
+    color: var(--ink-dim);
+    cursor: pointer;
+  }
+  .filters button.on { background: var(--card); color: var(--ink); border-color: #3a4658; }
+  .filters button:focus-visible { outline: 2px solid var(--c-craft); outline-offset: 2px; }
+
+  .sub {
+    max-width: 1240px;
+    margin: 0 auto 22px;
+    color: var(--ink-faint);
+    font-size: 13px;
+  }
+
+  /* ---- hero stat tiles ---- */
+  .tiles {
+    max-width: 1240px;
+    margin: 0 auto 18px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 14px;
+  }
+  .tile {
+    background: var(--card);
+    border: 1px solid var(--card-line);
+    border-radius: 10px;
+    padding: 16px 18px 14px;
+  }
+  .tile .k {
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .tile .v {
+    font-size: 30px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    margin-top: 6px;
+    line-height: 1;
+  }
+  .tile .v small { font-size: 0.5em; font-weight: 500; color: var(--ink-dim); }
+  .tile .d {
+    font-size: 12px;
+    color: var(--ink-dim);
+    margin-top: 7px;
+  }
+  .tile .d b { color: var(--ink); font-weight: 600; }
+
+  /* ---- chart cards ---- */
+  .grid {
+    max-width: 1240px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(480px, 100%), 1fr));
+    gap: 14px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--card-line);
+    border-radius: 10px;
+    padding: 18px 20px 14px;
+    min-width: 0;
+  }
+  .card h2 {
+    margin: 0;
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 17px;
+  }
+  .card .meta {
+    font-size: 12px;
+    color: var(--ink-faint);
+    margin-top: 3px;
+  }
+  .legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin: 12px 0 4px;
+    font-size: 12px;
+    color: var(--ink-dim);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 10px; height: 10px; border-radius: 3px; }
+
+  .chart { width: 100%; display: block; }
+  .chart text { font-family: var(--sans); }
+  .axis-label { fill: var(--ink-faint); font-size: 11px; }
+  .val-label  { fill: var(--ink-dim);  font-size: 11px; font-variant-numeric: tabular-nums; }
+
+  details.tbl { margin-top: 8px; }
+  details.tbl summary {
+    font-size: 12px;
+    color: var(--ink-faint);
+    cursor: pointer;
+  }
+  details.tbl table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+    margin-top: 8px;
+    font-variant-numeric: tabular-nums;
+  }
+  details.tbl th, details.tbl td {
+    text-align: right;
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--card-line);
+    color: var(--ink-dim);
+  }
+  details.tbl th:first-child, details.tbl td:first-child { text-align: left; }
+  details.tbl th { color: var(--ink-faint); font-weight: 500; }
+
+  /* courses */
+  .course { margin-top: 14px; }
+  .course .row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    margin-bottom: 6px;
+  }
+  .course .row b { font-weight: 600; }
+  .course .row span { color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+  .bar {
+    height: 8px;
+    border-radius: 4px;
+    background: rgba(233, 229, 219, 0.08);
+    overflow: hidden;
+  }
+  .bar i {
+    display: block;
+    height: 100%;
+    border-radius: 4px;
+    background: var(--c);
+  }
+
+  /* inner weather strip */
+  .iw-strip { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 14px; }
+  .iw {
+    width: 22px; height: 22px;
+    border-radius: 5px;
+    display: grid;
+    place-items: center;
+    font-size: 11px;
+    background: rgba(233, 229, 219, 0.06);
+    border: 1px solid var(--card-line);
+  }
+  .iw-key { display: flex; gap: 14px; margin-top: 12px; font-size: 12px; color: var(--ink-dim); flex-wrap: wrap; }
+  .iw-key span { display: inline-flex; gap: 6px; align-items: center; }
+
+  /* tooltip */
+  #tip {
+    position: fixed;
+    pointer-events: none;
+    background: #0a0e16;
+    border: 1px solid #2e3a4e;
+    color: var(--ink);
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 7px;
+    opacity: 0;
+    transition: opacity 0.12s;
+    z-index: 10;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  #tip b { font-weight: 600; }
+  #tip .tk { color: var(--ink-faint); }
+</style>
+
+<div class="head">
+  <h1>The Ledger <small>Via Ethos &middot; real numbers, no brushwork</small></h1>
+  <div class="filters" role="group" aria-label="Period">
+    <button class="on">This week</button>
+    <button>30 days</button>
+    <button>All time</button>
+  </div>
+</div>
+<p class="sub">The painting is the soul; this page is the record. Every figure below comes from the same ledger the painting reads.</p>
+
+<div class="tiles">
+  <div class="tile">
+    <div class="k">Ethos Points</div>
+    <div class="v">12,480</div>
+    <div class="d"><b>+342</b> this week</div>
+  </div>
+  <div class="tile">
+    <div class="k">Current streak</div>
+    <div class="v">9 <small>days</small></div>
+    <div class="d">best: <b>21 days</b></div>
+  </div>
+  <div class="tile">
+    <div class="k">Focus this week</div>
+    <div class="v">14<small>h</small> 25<small>m</small></div>
+    <div class="d">target 16h &middot; <b>90%</b></div>
+  </div>
+  <div class="tile">
+    <div class="k">Avg. sleep</div>
+    <div class="v">7<small>h</small> 12<small>m</small></div>
+    <div class="d">target 8h &middot; quality <b>3.7/5</b></div>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h2>Focus hours by pillar</h2>
+    <div class="meta">Mon 6 — Sun 12 July &middot; hours per day</div>
+    <div class="legend" id="pillar-legend"></div>
+    <svg class="chart" id="focus-chart" viewBox="0 0 560 220" role="img" aria-label="Stacked bar chart of focus hours by pillar per day"></svg>
+    <details class="tbl">
+      <summary>View as table</summary>
+      <table id="focus-table"></table>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>Ethos Points earned</h2>
+    <div class="meta">Last 30 days &middot; points per day</div>
+    <svg class="chart" id="points-chart" viewBox="0 0 560 230" role="img" aria-label="Line chart of Ethos points per day over 30 days"></svg>
+  </div>
+
+  <div class="card">
+    <h2>Calories vs budget</h2>
+    <div class="meta">Daily intake &middot; budget 2,200 kcal (dashed)</div>
+    <svg class="chart" id="kcal-chart" viewBox="0 0 560 220" role="img" aria-label="Bar chart of daily calories against a 2200 kcal budget line"></svg>
+  </div>
+
+  <div class="card">
+    <h2>Sleep</h2>
+    <div class="meta">Hours per night &middot; target 8h (dashed)</div>
+    <svg class="chart" id="sleep-chart" viewBox="0 0 560 220" role="img" aria-label="Bar chart of sleep hours per night against an 8 hour target"></svg>
+  </div>
+
+  <div class="card">
+    <h2>Curriculum progress</h2>
+    <div class="meta">Topics completed per course</div>
+    <div class="course" id="courses"></div>
+  </div>
+
+  <div class="card">
+    <h2>Inner weather &middot; 30 days</h2>
+    <div class="meta">One cell per day — symbol carries the state, not color alone</div>
+    <div class="iw-strip" id="iw-strip"></div>
+    <div class="iw-key">
+      <span>○ Clear</span><span>☀ Radiant</span><span>▽ Heavy</span><span>≋ Stormy</span>
+      <span style="color:var(--ink-faint)">· no entry</span>
+    </div>
+  </div>
+</div>
+
+<div id="tip" role="status"></div>
+
+<script>
+  const PILLARS = [
+    { key: "mind",  name: "Mind",  c: "var(--c-mind)"  },
+    { key: "body",  name: "Body",  c: "var(--c-body)"  },
+    { key: "craft", name: "Craft", c: "var(--c-craft)" },
+    { key: "life",  name: "Life",  c: "var(--c-life)"  },
+  ];
+  const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+  // demo data
+  const focus = [ // hours per pillar per day
+    { mind: 1.5, body: 0.5, craft: 2.0, life: 0.3 },
+    { mind: 1.0, body: 0.8, craft: 1.5, life: 0.4 },
+    { mind: 2.0, body: 0.0, craft: 1.0, life: 0.3 },
+    { mind: 0.5, body: 1.0, craft: 2.5, life: 0.2 },
+    { mind: 1.5, body: 0.5, craft: 1.8, life: 0.5 },
+    { mind: 2.5, body: 1.0, craft: 0.5, life: 0.8 },
+    { mind: 1.2, body: 0.7, craft: 1.5, life: 0.4 },
+  ];
+  const points30 = [180,210,150,240,200,90,160,220,250,190,170,230,110,260,240,200,180,150,270,210,190,160,240,220,140,250,230,200,260,342];
+  const kcal = [2050, 2340, 1980, 2180, 2520, 2100, 1890];
+  const KCAL_BUDGET = 2200;
+  const sleep = [7.5, 6.8, 7.2, 6.5, 7.9, 8.3, 6.2];
+  const SLEEP_TARGET = 8;
+  const courses = [
+    { name: "Linear Algebra", done: 17, total: 25, c: "var(--c-mind)"  },
+    { name: "Rust & Systems", done: 9,  total: 20, c: "var(--c-craft)" },
+    { name: "English C1",     done: 24, total: 30, c: "var(--c-life)"  },
+  ];
+  const iw30 = "ccrrhcc-crhhsccrrc-hcrrccshcc".split(""); // c/r/h/s/-
+
+  const tip = document.getElementById("tip");
+  function showTip(e, html) {
+    tip.innerHTML = html;
+    tip.style.opacity = 1;
+    tip.style.left = Math.min(e.clientX + 14, window.innerWidth - 180) + "px";
+    tip.style.top = (e.clientY - 12) + "px";
+  }
+  function hideTip() { tip.style.opacity = 0; }
+  const S = (tag, attrs) => {
+    const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (const k in attrs) el.setAttribute(k, attrs[k]);
+    return el;
+  };
+  const fmt = n => n.toLocaleString("en-US");
+
+  /* ---- legend ---- */
+  document.getElementById("pillar-legend").innerHTML =
+    PILLARS.map(p => `<span><i style="background:${p.c}"></i>${p.name}</span>`).join("");
+
+  /* ---- focus stacked bars ---- */
+  (function () {
+    const svg = document.getElementById("focus-chart");
+    const M = { l: 34, r: 10, t: 12, b: 26 }, W = 560, H = 220;
+    const iw = W - M.l - M.r, ih = H - M.t - M.b;
+    const maxY = 5;
+    for (let v = 0; v <= maxY; v += 1) {
+      const y = M.t + ih - (v / maxY) * ih;
+      svg.append(S("line", { x1: M.l, x2: W - M.r, y1: y, y2: y, stroke: v === 0 ? "var(--axis)" : "var(--grid)", "stroke-width": 1 }));
+      svg.append(Object.assign(S("text", { x: M.l - 8, y: y + 4, "text-anchor": "end", class: "axis-label" }), { textContent: v + "h" }));
+    }
+    const bw = 34, step = iw / 7;
+    focus.forEach((d, i) => {
+      const x = M.l + step * i + (step - bw) / 2;
+      let acc = 0;
+      const total = PILLARS.reduce((s, p) => s + d[p.key], 0);
+      PILLARS.forEach((p, pi) => {
+        const v = d[p.key];
+        if (v <= 0) return;
+        const hgt = (v / maxY) * ih;
+        const y = M.t + ih - (acc / maxY) * ih - hgt;
+        const isTop = acc + v >= total - 0.001;
+        const rect = S("rect", {
+          x, y: y + 1, width: bw, height: Math.max(hgt - 2, 1.5),  // 2px surface gaps between segments
+          fill: p.c, rx: isTop ? 4 : 0,
+        });
+        rect.addEventListener("mousemove", e =>
+          showTip(e, `<b>${DAYS[i]}</b> · ${p.name}<br>${v.toFixed(1)}h <span class="tk">of ${total.toFixed(1)}h total</span>`));
+        rect.addEventListener("mouseleave", hideTip);
+        svg.append(rect);
+        acc += v;
+      });
+      svg.append(Object.assign(S("text", { x: x + bw / 2, y: M.t + ih - (total / maxY) * ih - 6, "text-anchor": "middle", class: "val-label" }), { textContent: total.toFixed(1) }));
+      svg.append(Object.assign(S("text", { x: x + bw / 2, y: H - 8, "text-anchor": "middle", class: "axis-label" }), { textContent: DAYS[i] }));
+    });
+    // table view
+    const t = document.getElementById("focus-table");
+    t.innerHTML = "<tr><th>Day</th>" + PILLARS.map(p => `<th>${p.name}</th>`).join("") + "<th>Total</th></tr>" +
+      focus.map((d, i) => `<tr><td>${DAYS[i]}</td>` + PILLARS.map(p => `<td>${d[p.key].toFixed(1)}</td>`).join("") +
+        `<td>${PILLARS.reduce((s, p) => s + d[p.key], 0).toFixed(1)}</td></tr>`).join("");
+  })();
+
+  /* ---- points line ---- */
+  (function () {
+    const svg = document.getElementById("points-chart");
+    const M = { l: 40, r: 14, t: 14, b: 24 }, W = 560, H = 230;
+    const iw = W - M.l - M.r, ih = H - M.t - M.b;
+    const maxY = 350;
+    for (let v = 0; v <= maxY; v += 100) {
+      const y = M.t + ih - (v / maxY) * ih;
+      svg.append(S("line", { x1: M.l, x2: W - M.r, y1: y, y2: y, stroke: v === 0 ? "var(--axis)" : "var(--grid)", "stroke-width": 1 }));
+      svg.append(Object.assign(S("text", { x: M.l - 8, y: y + 4, "text-anchor": "end", class: "axis-label" }), { textContent: v }));
+    }
+    const px = i => M.l + (i / (points30.length - 1)) * iw;
+    const py = v => M.t + ih - (v / maxY) * ih;
+    const dLine = points30.map((v, i) => (i ? "L" : "M") + px(i).toFixed(1) + " " + py(v).toFixed(1)).join(" ");
+    svg.append(S("path", { d: dLine + ` L ${px(points30.length - 1)} ${M.t + ih} L ${px(0)} ${M.t + ih} Z`, fill: "var(--c-mind)", opacity: 0.12 }));
+    svg.append(S("path", { d: dLine, fill: "none", stroke: "var(--c-mind)", "stroke-width": 2, "stroke-linejoin": "round" }));
+    // emphasized endpoint + selective label
+    const last = points30.length - 1;
+    svg.append(S("circle", { cx: px(last), cy: py(points30[last]), r: 4, fill: "var(--c-mind)", stroke: "var(--card)", "stroke-width": 2 }));
+    svg.append(Object.assign(S("text", { x: px(last) - 6, y: py(points30[last]) - 10, "text-anchor": "end", class: "val-label" }), { textContent: fmt(points30[last]) + " pts" }));
+    svg.append(Object.assign(S("text", { x: px(0), y: H - 6, class: "axis-label" }), { textContent: "30 days ago" }));
+    svg.append(Object.assign(S("text", { x: px(last), y: H - 6, "text-anchor": "end", class: "axis-label" }), { textContent: "today" }));
+    // crosshair + tooltip
+    const cross = S("line", { y1: M.t, y2: M.t + ih, stroke: "var(--axis)", "stroke-width": 1, opacity: 0 });
+    svg.append(cross);
+    const overlay = S("rect", { x: M.l, y: M.t, width: iw, height: ih, fill: "transparent" });
+    overlay.addEventListener("mousemove", e => {
+      const r = svg.getBoundingClientRect();
+      const i = Math.round(((e.clientX - r.left) * (560 / r.width) - M.l) / iw * (points30.length - 1));
+      const ci = Math.max(0, Math.min(points30.length - 1, i));
+      cross.setAttribute("x1", px(ci)); cross.setAttribute("x2", px(ci));
+      cross.setAttribute("opacity", 1);
+      showTip(e, `<b>${fmt(points30[ci])} pts</b> <span class="tk">· day ${ci + 1}</span>`);
+    });
+    overlay.addEventListener("mouseleave", () => { cross.setAttribute("opacity", 0); hideTip(); });
+    svg.append(overlay);
+  })();
+
+  /* ---- generic single-series bars with a reference line ---- */
+  function barsWithRef(id, values, refValue, maxY, unit, refLabel, overLabel) {
+    const svg = document.getElementById(id);
+    const M = { l: 44, r: 14, t: 16, b: 26 }, W = 560, H = 220;
+    const iw = W - M.l - M.r, ih = H - M.t - M.b;
+    for (let v = 0; v <= maxY; v += maxY / 4) {
+      const y = M.t + ih - (v / maxY) * ih;
+      svg.append(S("line", { x1: M.l, x2: W - M.r, y1: y, y2: y, stroke: v === 0 ? "var(--axis)" : "var(--grid)", "stroke-width": 1 }));
+      svg.append(Object.assign(S("text", { x: M.l - 8, y: y + 4, "text-anchor": "end", class: "axis-label" }), { textContent: fmt(Math.round(v * 10) / 10) }));
+    }
+    const step = iw / values.length, bw = 34;
+    values.forEach((v, i) => {
+      const x = M.l + step * i + (step - bw) / 2;
+      const hgt = (v / maxY) * ih;
+      const over = v > refValue;
+      const rect = S("rect", { x, y: M.t + ih - hgt, width: bw, height: hgt, rx: 4, fill: "var(--c-mind)" });
+      rect.addEventListener("mousemove", e =>
+        showTip(e, `<b>${DAYS[i]}</b><br>${fmt(v)} ${unit}${over ? ` <span class="tk">· over ${refLabel}</span>` : ""}`));
+      rect.addEventListener("mouseleave", hideTip);
+      svg.append(rect);
+      if (over) // secondary encoding for over-budget: a marker + the value labeled, not color alone
+        svg.append(Object.assign(S("text", { x: x + bw / 2, y: M.t + ih - hgt - 6, "text-anchor": "middle", class: "val-label" }), { textContent: "▲ " + fmt(v) }));
+      svg.append(Object.assign(S("text", { x: x + bw / 2, y: H - 8, "text-anchor": "middle", class: "axis-label" }), { textContent: DAYS[i] }));
+    });
+    const ry = M.t + ih - (refValue / maxY) * ih;
+    svg.append(S("line", { x1: M.l, x2: W - M.r, y1: ry, y2: ry, stroke: "var(--ink-dim)", "stroke-width": 1, "stroke-dasharray": "5 4" }));
+    svg.append(Object.assign(S("text", { x: W - M.r, y: ry - 6, "text-anchor": "end", class: "val-label" }), { textContent: refLabel }));
+  }
+  barsWithRef("kcal-chart", kcal, KCAL_BUDGET, 3000, "kcal", "2,200 kcal budget");
+  barsWithRef("sleep-chart", sleep, SLEEP_TARGET, 10, "h", "8h target");
+
+  /* ---- courses ---- */
+  document.getElementById("courses").innerHTML = courses.map(c => `
+    <div style="margin-bottom:16px">
+      <div class="row"><b>${c.name}</b><span>${c.done} / ${c.total} topics · ${Math.round(c.done / c.total * 100)}%</span></div>
+      <div class="bar"><i style="--c:${c.c}; width:${(c.done / c.total * 100).toFixed(0)}%"></i></div>
+    </div>`).join("");
+
+  /* ---- inner weather strip ---- */
+  const IW = {
+    c: { sym: "○", name: "Clear",   bg: "rgba(59,127,217,0.22)"  },
+    r: { sym: "☀", name: "Radiant", bg: "rgba(184,129,31,0.25)"  },
+    h: { sym: "▽", name: "Heavy",   bg: "rgba(233,229,219,0.10)" },
+    s: { sym: "≋", name: "Stormy",  bg: "rgba(217,79,56,0.22)"   },
+  };
+  document.getElementById("iw-strip").innerHTML = iw30.map((d, i) => {
+    const w = IW[d];
+    return w
+      ? `<span class="iw" style="background:${w.bg}" title="Day ${i + 1}: ${w.name}">${w.sym}</span>`
+      : `<span class="iw" title="Day ${i + 1}: no entry"></span>`;
+  }).join("");
+</script>

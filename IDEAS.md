@@ -289,6 +289,37 @@ modülleri kapsar.
 5. v0.5 Müfredat: ders planı + tarla sıraları + tekrar önerileri
 6. v0.6 Uyku + istatistik + Memento Mori
 
+## 14. İkinci Ekran: The Ledger (Defter)
+
+Ürün sahibinin isteğiyle iki-ekran mimarisi netleşti: **tablo ruh,
+Ledger akıl.** İlk ekran sanatsal yorum (baca, kargalar, tarla
+sıraları); ikinci ekran aynı verinin hiç süslenmemiş, doğrudan
+istatistik hali. İkisi de aynı `ethos_ledger` + modül tablolarından
+okur — iki ayrı doğruluk kaynağı yoktur.
+
+İçerik (mockup: `design/mockups/ledger.html`):
+- **Kahraman kutuları:** Ethos Puanı (+haftalık delta), güncel/en iyi
+  streak, haftalık odak saati vs hedef, ortalama uyku + kalite.
+- **Pillar bazında odak saatleri:** günlük yığılmış çubuklar (2px
+  segment boşlukları, üstte toplam etiketi, tablo görünümü eki).
+- **Ethos Puanı trendi:** 30 günlük çizgi + alan, vurgulu uç nokta,
+  crosshair + tooltip.
+- **Kalori vs bütçe** ve **Uyku vs hedef:** tek serili çubuklar +
+  kesikli referans çizgisi; bütçe aşımı yalnız renkle değil ▲ işaret +
+  etiketle kodlanır.
+- **Müfredat ilerlemesi:** ders başına konu sayısı + yüzde çubuğu.
+- **İç Hava şeridi:** 30 günlük hücre dizisi; durum sembolle taşınır
+  (○ ☀ ▽ ≋), renk tek başına anlam taşımaz; boş gün "kayıt yok".
+
+Grafik disiplini: pillar UI renklerinin koyu zemine kalibre edilmiş
+grafik varyantları kullanılır (#3b7fd9 / #d94f38 / #b8811f / #2a9a62 —
+OKLCH bandı + kontrast doğrulandı; Body↔Craft CVD ayrımı taban bantta
+olduğundan boşluk+etiket+lejant ikincil kodlaması zorunlu). Tek eksen
+kuralı; sayılar tabular; metin asla seri renginde yazılmaz.
+
+Navigasyonda yeri: çerçeve rayında "Defter" simgesi; panel PC'de sağa
+kaydırma hareketiyle tablo ↔ defter geçişi.
+
 ## 5. Ton Rehberi: Mistik Ruh, Kusursuz Kullanışlılık
 
 Netleştirilen ilke: **mistik/felsefi atmosfer korunur; "profesyonellik"
