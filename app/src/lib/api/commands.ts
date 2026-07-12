@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import type {
   ActionAdminView,
+  CourseDetailView,
   CourseView,
   FoodItem,
   LedgerStats,
@@ -71,6 +72,9 @@ export const api = {
     invoke<CourseView[]>('add_lesson', { courseId, title, plannedOn }),
   completeLesson: (lessonId: string) => invoke<CourseView[]>('complete_lesson', { lessonId }),
   skipLesson: (lessonId: string) => invoke<CourseView[]>('skip_lesson', { lessonId }),
+  getCourseDetail: (courseId: string) => invoke<CourseDetailView>('get_course_detail', { courseId }),
+  reorderLessons: (courseId: string, orderedIds: string[]) =>
+    invoke<CourseDetailView>('reorder_lessons', { courseId, orderedIds }),
   getLastSleep: () => invoke<SleepLog | null>('get_last_sleep'),
   logSleep: (date: string, bedAt: string, wokeAt: string, quality: number) =>
     invoke<SleepLog>('log_sleep', { date, bedAt, wokeAt, quality }),

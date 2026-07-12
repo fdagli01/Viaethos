@@ -124,6 +124,7 @@ CREATE TABLE IF NOT EXISTS lessons (
   planned_on TEXT NOT NULL,
   status     TEXT NOT NULL DEFAULT 'planned' CHECK (status IN ('planned', 'done', 'skipped')),
   review_of  TEXT REFERENCES lessons(id),  -- set on auto-generated spaced-repetition reviews
+  sort_order INTEGER NOT NULL DEFAULT 0,   -- manual backlog order, independent of planned_on
   created_at INTEGER NOT NULL
 );
 

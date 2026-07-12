@@ -109,6 +109,7 @@ pub struct Lesson {
     pub planned_on: String,
     pub status: String,
     pub review_of: Option<String>,
+    pub sort_order: i64,
     pub created_at: i64,
 }
 

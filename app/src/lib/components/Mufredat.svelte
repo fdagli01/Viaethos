@@ -3,10 +3,12 @@
   import { curriculum } from '../stores/curriculum.svelte';
   import { today } from '../stores/today.svelte';
   import { ritual } from '../stores/ritual.svelte';
+  import CourseDetail from './CourseDetail.svelte';
   import type { CourseView } from '../api/types';
 
   let courseName = $state('');
   let coursePillarId = $state('');
+  let detailCourseId = $state<string | null>(null);
 
   onMount(() => {
     curriculum.init();
@@ -71,7 +73,9 @@
       <div class="mufredat-course">
         <div class="mufredat-course-header">
           <span class="pillar-dot" style={`background:${course.color_token}`}></span>
-          <span class="action-name">{course.name}</span>
+          <button class="mufredat-course-link" onclick={() => (detailCourseId = course.id)}
+            >{course.name}</button
+          >
           <span class="action-meta">{course.done_lessons}/{course.total_lessons} planted</span>
         </div>
         <div class="pillar-hairline">
@@ -110,6 +114,10 @@
   {/if}
 </section>
 
+{#if detailCourseId}
+  <CourseDetail courseId={detailCourseId} onClose={() => (detailCourseId = null)} />
+{/if}
+
 <style>
   .mufredat-course {
     border-bottom: 1px solid var(--card-border);
@@ -126,5 +134,18 @@
   }
   .mufredat-course .pillar-hairline {
     margin: 0 0 8px;
+  }
+  .mufredat-course-link {
+    background: none;
+    border: none;
+    color: var(--ink);
+    font-size: 14.5px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    text-align: left;
+  }
+  .mufredat-course-link:hover {
+    text-decoration: underline;
   }
 </style>

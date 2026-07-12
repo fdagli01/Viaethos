@@ -654,3 +654,28 @@ Path / Manage / Settings" + Quiet Mode + Memento Mori) gerçek. Konsept
 fazından uygulamaya geçiş burada doğal bir durak: paketleme (ikon seti,
 installer, ilk-çalıştırma deneyimi), gerçek kullanıcı testi, veya belirli
 bir modülü derinleştirmek sıradaki mantıklı yönler.
+
+## 24. Müfredat Derinleştirme: Kurs Detayı + Yeniden Sıralama + Tekrar Takvimi
+
+Kullanıcı tercihiyle Müfredat modülünü derinleştirdim. Üç eksiği kapattım:
+
+- **Konu yeniden sıralama**: `lessons` tablosuna `sort_order` eklendi
+  (`planned_on`'dan bağımsız, saf bir backlog sırası). Yeni konular ve
+  otomatik tekrar dersleri sona ekleniyor (`MAX(sort_order)+1`).
+  `reorder_lessons(course_id, ordered_ids)` verilen sırayı olduğu gibi
+  0'dan yazıyor.
+- **Kurs detay sayfası**: Müfredat'taki kurs adına tıklayınca (yeni bir
+  nav sekmesi değil, `Mufredat.svelte` içinde yerel state ile açılan bir
+  cam pano — "Tablodaki Her Şey Canlı" ilkesiyle tutarlı, ayrı bir
+  router gerektirmedi) `CourseDetail.svelte` açılıyor: tüm konular
+  (planned/done/skipped hepsi, durum etiketiyle), her satırda yukarı/
+  aşağı oklarla anında kalıcı olan yeniden sıralama.
+- **Tekrar takvimi**: sadece bugün/gecikmiş değil, `lessons_upcoming`
+  ile henüz vadesi gelmemiş planlı tekrarlar da (`planned_on > bugün`)
+  ayrı bir "Upcoming Reviews" listesinde görünüyor — kullanıcı önündeki
+  aralıklı tekrar programını görebiliyor, sadece "şu an ne var" değil.
+
+Doğrulama: `cargo check`/`npm build+check` temiz; yeni şemayla derlenen
+ikili Xvfb altında çöküşsüz çalıştı; yeniden sıralama mantığı (aynı
+SQL örüntüsüyle) Python'da bağımsız test edilip üç konunun sırasının
+doğru şekilde kalıcı olduğu teyit edildi.

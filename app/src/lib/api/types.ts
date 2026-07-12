@@ -125,7 +125,14 @@ export interface Lesson {
   planned_on: string;
   status: 'planned' | 'done' | 'skipped';
   review_of: string | null;
+  sort_order: number;
   created_at: number;
+}
+
+export interface CourseDetailView {
+  course: CourseView;
+  all_lessons: Lesson[];
+  upcoming: Lesson[];
 }
 
 export interface CourseView {

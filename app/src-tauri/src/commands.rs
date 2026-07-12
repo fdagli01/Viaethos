@@ -756,6 +756,53 @@ pub fn skip_lesson(db: State<DbState>, lesson_id: String) -> Result<Vec<CourseVi
     build_course_views(&conn)
 }
 
+#[derive(Serialize)]
+pub struct CourseDetailView {
+    pub course: CourseView,
+    pub all_lessons: Vec<crate::domain::models::Lesson>,
+    pub upcoming: Vec<crate::domain::models::Lesson>,
+}
+
+#[tauri::command]
+pub fn get_course_detail(db: State<DbState>, course_id: String) -> Result<CourseDetailView, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let c = repo::get_course(&conn, &course_id).map_err(|e| e.to_string())?;
+    let (done, total) = repo::course_progress(&conn, &course_id).map_err(|e| e.to_string())?;
+    let due = repo::lessons_due(&conn, &course_id).map_err(|e| e.to_string())?;
+    let course = CourseView {
+        id: c.id,
+        name: c.name,
+        pillar_id: c.pillar_id,
+        action_id: c.action_id,
+        color_token: c.color_token,
+        target_hours_week: c.target_hours_week,
+        done_lessons: done,
+        total_lessons: total,
+        due_lessons: due,
+    };
+    let all_lessons = repo::list_all_lessons_for_course(&conn, &course_id).map_err(|e| e.to_string())?;
+    let upcoming = repo::lessons_upcoming(&conn, &course_id).map_err(|e| e.to_string())?;
+    Ok(CourseDetailView {
+        course,
+        all_lessons,
+        upcoming,
+    })
+}
+
+/// Manual backlog reorder — independent of planned_on / spaced-repetition
+/// scheduling, which stays untouched.
+#[tauri::command]
+pub fn reorder_lessons(
+    db: State<DbState>,
+    course_id: String,
+    ordered_ids: Vec<String>,
+) -> Result<CourseDetailView, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    repo::reorder_lessons(&conn, &ordered_ids).map_err(|e| e.to_string())?;
+    drop(conn);
+    get_course_detail(db, course_id)
+}
+
 // ------------------------------------------------------------------ Tasks --
 
 #[tauri::command]

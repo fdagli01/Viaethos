@@ -617,35 +617,77 @@ fn row_to_lesson(r: &rusqlite::Row) -> rusqlite::Result<Lesson> {
         planned_on: r.get(3)?,
         status: r.get(4)?,
         review_of: r.get(5)?,
-        created_at: r.get(6)?,
+        sort_order: r.get(6)?,
+        created_at: r.get(7)?,
     })
 }
 
+const LESSON_COLUMNS: &str =
+    "id, course_id, title, planned_on, status, review_of, sort_order, created_at";
+
 pub fn add_lesson(conn: &Connection, course_id: &str, title: &str, planned_on: &str) -> Result<String> {
     let id = Uuid::new_v4().to_string();
+    let next_order: i64 = conn.query_row(
+        "SELECT COALESCE(MAX(sort_order), -1) + 1 FROM lessons WHERE course_id = ?1",
+        params![course_id],
+        |r| r.get(0),
+    )?;
     conn.execute(
-        "INSERT INTO lessons (id, course_id, title, planned_on, status, review_of, created_at)
-         VALUES (?1, ?2, ?3, ?4, 'planned', NULL, ?5)",
-        params![id, course_id, title, planned_on, now_ts()],
+        "INSERT INTO lessons (id, course_id, title, planned_on, status, review_of, sort_order, created_at)
+         VALUES (?1, ?2, ?3, ?4, 'planned', NULL, ?5, ?6)",
+        params![id, course_id, title, planned_on, next_order, now_ts()],
     )?;
     Ok(id)
 }
 
 /// Lessons due today or overdue (still planned) for one course.
 pub fn lessons_due(conn: &Connection, course_id: &str) -> Result<Vec<Lesson>> {
-    let mut stmt = conn.prepare(
-        "SELECT id, course_id, title, planned_on, status, review_of, created_at
-         FROM lessons WHERE course_id = ?1 AND status = 'planned' AND planned_on <= ?2
-         ORDER BY planned_on",
-    )?;
+    let mut stmt = conn.prepare(&format!(
+        "SELECT {LESSON_COLUMNS} FROM lessons
+         WHERE course_id = ?1 AND status = 'planned' AND planned_on <= ?2
+         ORDER BY sort_order"
+    ))?;
     let rows = stmt.query_map(params![course_id, today(conn).to_string()], row_to_lesson)?;
     rows.collect()
 }
 
+/// Planned lessons not yet due — the visible spaced-repetition calendar
+/// ahead, so studying a course doesn't only ever show "what's due now".
+pub fn lessons_upcoming(conn: &Connection, course_id: &str) -> Result<Vec<Lesson>> {
+    let mut stmt = conn.prepare(&format!(
+        "SELECT {LESSON_COLUMNS} FROM lessons
+         WHERE course_id = ?1 AND status = 'planned' AND planned_on > ?2
+         ORDER BY planned_on"
+    ))?;
+    let rows = stmt.query_map(params![course_id, today(conn).to_string()], row_to_lesson)?;
+    rows.collect()
+}
+
+/// Every lesson in a course regardless of status, in backlog order —
+/// the full course detail view.
+pub fn list_all_lessons_for_course(conn: &Connection, course_id: &str) -> Result<Vec<Lesson>> {
+    let mut stmt = conn.prepare(&format!(
+        "SELECT {LESSON_COLUMNS} FROM lessons WHERE course_id = ?1 ORDER BY sort_order"
+    ))?;
+    let rows = stmt.query_map(params![course_id], row_to_lesson)?;
+    rows.collect()
+}
+
+/// Rewrites sort_order to match the given id order — a manual backlog
+/// reorder, independent of planned_on / spaced-repetition scheduling.
+pub fn reorder_lessons(conn: &Connection, ordered_ids: &[String]) -> Result<()> {
+    for (i, id) in ordered_ids.iter().enumerate() {
+        conn.execute(
+            "UPDATE lessons SET sort_order = ?1 WHERE id = ?2",
+            params![i as i64, id],
+        )?;
+    }
+    Ok(())
+}
+
 pub fn get_lesson(conn: &Connection, lesson_id: &str) -> Result<Lesson> {
     conn.query_row(
-        "SELECT id, course_id, title, planned_on, status, review_of, created_at
-         FROM lessons WHERE id = ?1",
+        &format!("SELECT {LESSON_COLUMNS} FROM lessons WHERE id = ?1"),
         params![lesson_id],
         row_to_lesson,
     )
@@ -719,10 +761,15 @@ fn add_lesson_review(
     review_of: &str,
 ) -> Result<String> {
     let id = Uuid::new_v4().to_string();
+    let next_order: i64 = conn.query_row(
+        "SELECT COALESCE(MAX(sort_order), -1) + 1 FROM lessons WHERE course_id = ?1",
+        params![course_id],
+        |r| r.get(0),
+    )?;
     conn.execute(
-        "INSERT INTO lessons (id, course_id, title, planned_on, status, review_of, created_at)
-         VALUES (?1, ?2, ?3, ?4, 'planned', ?5, ?6)",
-        params![id, course_id, title, planned_on, review_of, now_ts()],
+        "INSERT INTO lessons (id, course_id, title, planned_on, status, review_of, sort_order, created_at)
+         VALUES (?1, ?2, ?3, ?4, 'planned', ?5, ?6, ?7)",
+        params![id, course_id, title, planned_on, review_of, next_order, now_ts()],
     )?;
     Ok(id)
 }
