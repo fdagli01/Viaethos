@@ -67,6 +67,9 @@
             precipitationMm: realWeather.precipitation_mm,
           }
         : undefined,
+      view.kcal_budget > 0
+        ? { ratio: view.kcal_today / view.kcal_budget, overBudget: view.kcal_today > view.kcal_budget }
+        : undefined,
     );
     canvasEl.style.filter = filter;
   }

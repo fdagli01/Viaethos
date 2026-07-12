@@ -1,5 +1,14 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { LedgerStats, QuietModeView, Task, TodayView, WeatherSnapshot } from './types';
+import type {
+  FoodItem,
+  LedgerStats,
+  MealsView,
+  QuietModeView,
+  Task,
+  TimeSlot,
+  TodayView,
+  WeatherSnapshot,
+} from './types';
 
 export const api = {
   getToday: () => invoke<TodayView>('get_today'),
@@ -18,4 +27,30 @@ export const api = {
   completeTask: (taskId: string) => invoke<Task[]>('complete_task', { taskId }),
   deleteTask: (taskId: string) => invoke<Task[]>('delete_task', { taskId }),
   getWeather: () => invoke<WeatherSnapshot | null>('get_weather'),
+  searchFoodItems: (query: string) => invoke<FoodItem[]>('search_food_items', { query }),
+  addFoodItem: (
+    name: string,
+    kcalPer100g: number,
+    proteinPer100g: number,
+    carbPer100g: number,
+    fatPer100g: number,
+  ) =>
+    invoke<FoodItem>('add_food_item', {
+      name,
+      kcalPer100g,
+      proteinPer100g,
+      carbPer100g,
+      fatPer100g,
+    }),
+  getMealsToday: () => invoke<MealsView>('get_meals_today'),
+  addMeal: (
+    timeSlot: TimeSlot,
+    name: string,
+    kcal: number,
+    proteinG: number,
+    carbG: number,
+    fatG: number,
+    note: string | null,
+  ) => invoke<MealsView>('add_meal', { timeSlot, name, kcal, proteinG, carbG, fatG, note }),
+  deleteMeal: (mealId: string) => invoke<MealsView>('delete_meal', { mealId }),
 };

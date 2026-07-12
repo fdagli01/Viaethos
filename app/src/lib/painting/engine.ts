@@ -284,7 +284,18 @@ function paintSwirlSky(
   ctx.globalAlpha = 1;
 }
 
-function paintHouse(ctx: CanvasRenderingContext2D, W: number, horizonY: number, dk: number, seedBase: number) {
+interface ChimneyPoint {
+  x: number;
+  y: number;
+}
+
+function paintHouse(
+  ctx: CanvasRenderingContext2D,
+  W: number,
+  horizonY: number,
+  dk: number,
+  seedBase: number,
+): ChimneyPoint {
   const r = rng(seedBase + 71);
   const hw = W * 0.085;
   const hh = horizonY * 0.16;
@@ -326,6 +337,18 @@ function paintHouse(ctx: CanvasRenderingContext2D, W: number, horizonY: number, 
     ctx.fillRect(hx + hw * 0.55, hy + hh * 0.3, hw * 0.15, hh * 0.3);
     ctx.globalAlpha = 1;
   }
+
+  // A small chimney on the near roof block — Sofra's mark on the scene.
+  const chimW = hw * 0.13;
+  const chimX = hx + hw * 1.28;
+  const chimTopY = hy - hh * 0.3;
+  const chimBotY = hy + hh * 0.1;
+  ctx.fillStyle = dim('#7a5238');
+  ctx.fillRect(chimX, chimTopY, chimW, chimBotY - chimTopY);
+  ctx.fillStyle = dim('#5c3d28');
+  ctx.fillRect(chimX - 2, chimTopY, chimW + 4, hh * 0.05);
+
+  return { x: chimX + chimW / 2, y: chimTopY };
 }
 
 function paintPath(
@@ -621,6 +644,34 @@ function paintPrecipitation(
   }
 }
 
+// Chimney smoke — Sofra's mark on the scene. Puffs thicken as the day's
+// logged meals approach the calorie budget; smoke darkens once over it.
+// No smoke at all just means nothing has been logged yet today.
+function paintSmoke(
+  ctx: CanvasRenderingContext2D,
+  origin: ChimneyPoint,
+  ratio: number,
+  overBudget: boolean,
+  seedBase: number,
+) {
+  if (ratio <= 0) return;
+  const r = rng(seedBase + 131);
+  const puffs = Math.round(3 + Math.min(ratio, 1.3) * 9);
+  const col = overBudget ? 'rgba(70,68,72,ALPHA)' : 'rgba(220,218,214,ALPHA)';
+  for (let i = 0; i < puffs; i++) {
+    const t = i / puffs;
+    const drift = Math.sin(t * 5 + seedBase) * 6 * t;
+    const x = origin.x + drift + (r() - 0.5) * 4;
+    const y = origin.y - t * 46 - r() * 6;
+    const size = 3 + t * 7 + r() * 3;
+    const alpha = (0.5 - t * 0.35) * Math.min(ratio, 1.2);
+    ctx.fillStyle = col.replace('ALPHA', Math.max(alpha, 0).toFixed(2));
+    ctx.beginPath();
+    ctx.arc(x, y, size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
 /** Render one frame of the living landscape at hour `h` (0-24) into `ctx`. */
 export function renderPainting(
   ctx: CanvasRenderingContext2D,
@@ -629,6 +680,7 @@ export function renderPainting(
   h: number,
   weather: WeatherName,
   real?: RealWeatherInput,
+  sofra?: { ratio: number; overBudget: boolean },
 ): string {
   const [top, mid, hor] = skyAt(h);
   const wx = WEATHER[weather];
@@ -675,7 +727,10 @@ export function renderPainting(
   ctx.fillStyle = groundGrad;
   ctx.fillRect(0, horizonY - 2, W, H - horizonY + 2);
 
-  paintHouse(ctx, W, horizonY, dk, 500);
+  const chimney = paintHouse(ctx, W, horizonY, dk, 500);
+  if (sofra) {
+    paintSmoke(ctx, chimney, sofra.ratio, sofra.overBudget, 500);
+  }
   paintMeadow(ctx, W, horizonY, dk, groundWx, 500);
   paintWheatField(ctx, W, H, horizonY, dk, groundWx, 500);
   paintPath(ctx, W, H, horizonY, dk, groundWx, 500);

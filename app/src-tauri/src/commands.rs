@@ -267,6 +267,119 @@ pub async fn get_weather(
     }
 }
 
+// ------------------------------------------------------------------ Sofra --
+
+const DEFAULT_KCAL_BUDGET: f64 = 2000.0;
+
+#[derive(Serialize)]
+pub struct MealsView {
+    pub meals: Vec<crate::domain::models::Meal>,
+    pub kcal_total: f64,
+    pub kcal_budget: f64,
+}
+
+fn build_meals_view(conn: &rusqlite::Connection) -> Result<MealsView, String> {
+    let meals = repo::list_meals_on(conn, repo::today()).map_err(|e| e.to_string())?;
+    let kcal_total = repo::kcal_today(conn).map_err(|e| e.to_string())?;
+    let kcal_budget = repo::get_setting(conn, "calorie_budget")
+        .map_err(|e| e.to_string())?
+        .and_then(|s| s.parse::<f64>().ok())
+        .unwrap_or(DEFAULT_KCAL_BUDGET);
+    Ok(MealsView {
+        meals,
+        kcal_total,
+        kcal_budget,
+    })
+}
+
+#[tauri::command]
+pub fn search_food_items(
+    db: State<DbState>,
+    query: String,
+) -> Result<Vec<crate::domain::models::FoodItem>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    repo::search_food_items(&conn, &query).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn add_food_item(
+    db: State<DbState>,
+    name: String,
+    kcal_per_100g: f64,
+    protein_per_100g: f64,
+    carb_per_100g: f64,
+    fat_per_100g: f64,
+) -> Result<crate::domain::models::FoodItem, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let id = repo::add_food_item(
+        &conn,
+        &name,
+        kcal_per_100g,
+        protein_per_100g,
+        carb_per_100g,
+        fat_per_100g,
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(crate::domain::models::FoodItem {
+        id,
+        name,
+        kcal_per_100g,
+        protein_per_100g,
+        carb_per_100g,
+        fat_per_100g,
+        user_defined: true,
+    })
+}
+
+#[tauri::command]
+pub fn get_meals_today(db: State<DbState>) -> Result<MealsView, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    build_meals_view(&conn)
+}
+
+#[tauri::command]
+pub fn add_meal(
+    app: tauri::AppHandle,
+    db: State<DbState>,
+    time_slot: String,
+    name: String,
+    kcal: f64,
+    protein_g: f64,
+    carb_g: f64,
+    fat_g: f64,
+    note: Option<String>,
+) -> Result<MealsView, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let meal_id = repo::add_meal(
+        &conn,
+        &time_slot,
+        &name,
+        kcal,
+        protein_g,
+        carb_g,
+        fat_g,
+        note.as_deref(),
+    )
+    .map_err(|e| e.to_string())?;
+
+    let pillars = repo::list_pillars(&conn).map_err(|e| e.to_string())?;
+    if let Some(body) = pillars.iter().find(|p| p.name == "Body") {
+        repo::insert_ledger(&conn, &body.id, None, None, ethos::meal_points(), "meal_logged")
+            .map_err(|e| e.to_string())?;
+    }
+
+    let view = build_meals_view(&conn)?;
+    let _ = app.emit("entry-logged", &meal_id);
+    Ok(view)
+}
+
+#[tauri::command]
+pub fn delete_meal(db: State<DbState>, meal_id: String) -> Result<MealsView, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    repo::delete_meal(&conn, &meal_id).map_err(|e| e.to_string())?;
+    build_meals_view(&conn)
+}
+
 // ------------------------------------------------------------------ Tasks --
 
 #[tauri::command]
@@ -451,6 +564,8 @@ pub struct QuietModeView {
     pub inner_weather: String,
     pub path: Vec<PathDay>,
     pub milestones: Vec<Milestone>,
+    pub kcal_today: f64,
+    pub kcal_budget: f64,
 }
 
 /// Inner Weather is a manual, non-judgmental self-report — never inferred
@@ -535,6 +650,12 @@ pub fn get_quiet_mode(db: State<DbState>) -> Result<QuietModeView, String> {
         })
         .collect();
 
+    let kcal_today = repo::kcal_today(&conn).map_err(|e| e.to_string())?;
+    let kcal_budget = repo::get_setting(&conn, "calorie_budget")
+        .map_err(|e| e.to_string())?
+        .and_then(|s| s.parse::<f64>().ok())
+        .unwrap_or(DEFAULT_KCAL_BUDGET);
+
     Ok(QuietModeView {
         honored_today,
         due_today,
@@ -544,6 +665,8 @@ pub fn get_quiet_mode(db: State<DbState>) -> Result<QuietModeView, String> {
         inner_weather,
         path,
         milestones,
+        kcal_today,
+        kcal_budget,
     })
 }
 

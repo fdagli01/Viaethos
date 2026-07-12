@@ -91,6 +91,31 @@ pub struct Entry {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FoodItem {
+    pub id: String,
+    pub name: String,
+    pub kcal_per_100g: f64,
+    pub protein_per_100g: f64,
+    pub carb_per_100g: f64,
+    pub fat_per_100g: f64,
+    pub user_defined: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Meal {
+    pub id: String,
+    pub occurred_on: String,
+    pub time_slot: String,
+    pub name: String,
+    pub kcal: f64,
+    pub protein_g: f64,
+    pub carb_g: f64,
+    pub fat_g: f64,
+    pub note: Option<String>,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Task {
     pub id: String,
     pub pillar_id: Option<String>,

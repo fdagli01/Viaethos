@@ -4,6 +4,7 @@
 
 const TICK_POINTS: i64 = 5;
 const TASK_POINTS: i64 = 3;
+const MEAL_POINTS: i64 = 2;
 const FOCUS_POINTS_PER_MINUTE: i64 = 1;
 const INTENTION_SEALED_BONUS: i64 = 5;
 const STREAK_CAP_DAYS: i64 = 30;
@@ -28,6 +29,12 @@ pub fn tick_points(streak_days: i64) -> i64 {
 /// streak concept applies.
 pub fn task_points() -> i64 {
     TASK_POINTS
+}
+
+/// Points for logging one meal. Flat, and deliberately small — Sofra
+/// rewards the act of recording, not any judgment about what was eaten.
+pub fn meal_points() -> i64 {
+    MEAL_POINTS
 }
 
 /// Points for a completed Focus Session, given elapsed minutes and streak.

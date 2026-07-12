@@ -473,3 +473,33 @@ kısmı zaten budur — **offline/başarısız-istek yolu**: uygulama önbellek
 olmadan başlatıldı, istek engellendi, komut zarifçe `None` döndü, hiç
 panik/çökme olmadı. Gerçek API yanıtı kullanıcının kendi cihazında
 (ağ kısıtlaması olmayan) ilk çalıştırmada doğrulanmalı.
+
+## 19. v0.4: Sofra — Bacadan Tüten Duman
+
+Roadmap'teki v0.4 tamamlandı. `food_items` (28 kalemlik küçük paketli
+liste — tavuk göğsü, yumurta, pirinç, simit, mercimek çorbası, ayran gibi
+günlük kullanımda gerçekten arama kutusuna yazılacak şeyler) + `meals`
+tabloları eklendi. Backend: `search_food_items` (isimde LIKE arama),
+`add_food_item` (kullanıcı tanımlı gıda), `get_meals_today`/`add_meal`/
+`delete_meal`. Bir öğün kaydı, Body pillar'ına sabit +2 puan yazıyor
+(`meal_points()`) — yargısız: ne yediğin değil, kaydettiğin ödülleniyor.
+
+Today ekranında **Sofra** bölümü: gıda arama (200ms debounce) + gram
+girişi ile otomatik kcal/makro hesaplama, ya da manuel giriş (isim+kcal).
+Günün kalori toplamı bir hairline bar olarak bütçeye (`settings.calorie_budget`,
+varsayılan 2000) karşı gösteriliyor.
+
+Quiet Mode'da çiftlik evine küçük bir **baca** eklendi (`paintHouse` artık
+bacanın tepe noktasını döndürüyor); `paintSmoke` bu noktadan yükselen
+duman tüyleri çiziyor — sayısı/opaklığı günün kalori oranıyla (kcal_today/
+kcal_budget) artıyor, bütçe aşılırsa duman rengi açık griden koyu griye
+dönüyor. Hiç yemek kaydı yoksa baca hiç tütmüyor — tam olarak istenen
+"bacadan yemek kaydettikçe tütüyor" mekaniği.
+
+Doğrulama: `cargo check`/`npm build+check` temiz; yeni şemayla derlenen
+ikili Xvfb altında çöküşsüz çalıştı; 28 gıda öğesinin doğru seed
+edildiğini ve manuel eklenen bir öğünün `kcal_today` toplamına doğru
+yansıdığını sqlite3 üzerinden teyit ettim.
+
+Sırada roadmap'e göre **v0.5: Müfredat** (ders planı + tarla sıraları +
+tekrar önerileri) var.

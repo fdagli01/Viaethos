@@ -4,7 +4,7 @@ use chrono::{Datelike, Duration, Local, NaiveDate};
 use rusqlite::{params, Connection, OptionalExtension, Result};
 use uuid::Uuid;
 
-use crate::domain::models::{Action, ActionKind, Entry, Pillar, Schedule, Task};
+use crate::domain::models::{Action, ActionKind, Entry, FoodItem, Meal, Pillar, Schedule, Task};
 
 pub fn today() -> NaiveDate {
     Local::now().date_naive()
@@ -68,6 +68,54 @@ pub fn seed_if_empty(conn: &Connection) -> Result<()> {
                 i as i64,
                 now
             ],
+        )?;
+    }
+    Ok(())
+}
+
+/// A modest packaged food list — enough to search meaningfully out of the
+/// box. Users can add their own via `add_food_item`.
+pub fn seed_food_items_if_empty(conn: &Connection) -> Result<()> {
+    let count: i64 = conn.query_row("SELECT COUNT(*) FROM food_items", [], |r| r.get(0))?;
+    if count > 0 {
+        return Ok(());
+    }
+    // (name, kcal/100g, protein/100g, carb/100g, fat/100g)
+    let foods: &[(&str, f64, f64, f64, f64)] = &[
+        ("Chicken breast, cooked", 165.0, 31.0, 0.0, 3.6),
+        ("Egg, whole", 155.0, 13.0, 1.1, 11.0),
+        ("White rice, cooked", 130.0, 2.7, 28.0, 0.3),
+        ("Brown rice, cooked", 123.0, 2.6, 26.0, 1.0),
+        ("Oats, dry", 389.0, 16.9, 66.0, 6.9),
+        ("Whole milk", 61.0, 3.2, 4.8, 3.3),
+        ("Greek yogurt, plain", 59.0, 10.0, 3.6, 0.4),
+        ("Banana", 89.0, 1.1, 23.0, 0.3),
+        ("Apple", 52.0, 0.3, 14.0, 0.2),
+        ("Almonds", 579.0, 21.0, 22.0, 50.0),
+        ("Olive oil", 884.0, 0.0, 0.0, 100.0),
+        ("Whole wheat bread", 247.0, 13.0, 41.0, 4.2),
+        ("White bread", 265.0, 9.0, 49.0, 3.2),
+        ("Cheddar cheese", 402.0, 25.0, 1.3, 33.0),
+        ("Salmon, cooked", 208.0, 20.0, 0.0, 13.0),
+        ("Ground beef, cooked", 250.0, 26.0, 0.0, 15.0),
+        ("Lentils, cooked", 116.0, 9.0, 20.0, 0.4),
+        ("Chickpeas, cooked", 164.0, 8.9, 27.0, 2.6),
+        ("Broccoli, cooked", 35.0, 2.4, 7.2, 0.4),
+        ("Potato, boiled", 87.0, 1.9, 20.0, 0.1),
+        ("Sweet potato, baked", 90.0, 2.0, 21.0, 0.2),
+        ("Avocado", 160.0, 2.0, 8.5, 15.0),
+        ("Peanut butter", 588.0, 25.0, 20.0, 50.0),
+        ("Dark chocolate", 546.0, 4.9, 61.0, 31.0),
+        ("Turkish tea (unsweetened)", 1.0, 0.0, 0.2, 0.0),
+        ("Simit", 275.0, 8.5, 51.0, 4.5),
+        ("Lentil soup (mercimek çorbası)", 90.0, 5.0, 13.0, 2.0),
+        ("Ayran", 34.0, 1.6, 2.0, 1.9),
+    ];
+    for (name, kcal, protein, carb, fat) in foods {
+        conn.execute(
+            "INSERT INTO food_items (id, name, kcal_per_100g, protein_per_100g, carb_per_100g, fat_per_100g, user_defined)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0)",
+            params![Uuid::new_v4().to_string(), name, kcal, protein, carb, fat],
         )?;
     }
     Ok(())
@@ -256,6 +304,105 @@ pub fn insert_ledger(
         params![id, pillar_id, action_id, entry_id, points, reason, now_ts()],
     )?;
     Ok(())
+}
+
+// -------------------------------------------------------------- Sofra --
+
+fn row_to_food_item(r: &rusqlite::Row) -> rusqlite::Result<FoodItem> {
+    let user_defined: i64 = r.get(6)?;
+    Ok(FoodItem {
+        id: r.get(0)?,
+        name: r.get(1)?,
+        kcal_per_100g: r.get(2)?,
+        protein_per_100g: r.get(3)?,
+        carb_per_100g: r.get(4)?,
+        fat_per_100g: r.get(5)?,
+        user_defined: user_defined != 0,
+    })
+}
+
+pub fn search_food_items(conn: &Connection, query: &str) -> Result<Vec<FoodItem>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, name, kcal_per_100g, protein_per_100g, carb_per_100g, fat_per_100g, user_defined
+         FROM food_items WHERE name LIKE ?1 ORDER BY name LIMIT 25",
+    )?;
+    let pattern = format!("%{query}%");
+    let rows = stmt.query_map(params![pattern], row_to_food_item)?;
+    rows.collect()
+}
+
+pub fn add_food_item(
+    conn: &Connection,
+    name: &str,
+    kcal_per_100g: f64,
+    protein_per_100g: f64,
+    carb_per_100g: f64,
+    fat_per_100g: f64,
+) -> Result<String> {
+    let id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO food_items (id, name, kcal_per_100g, protein_per_100g, carb_per_100g, fat_per_100g, user_defined)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, 1)",
+        params![id, name, kcal_per_100g, protein_per_100g, carb_per_100g, fat_per_100g],
+    )?;
+    Ok(id)
+}
+
+fn row_to_meal(r: &rusqlite::Row) -> rusqlite::Result<Meal> {
+    Ok(Meal {
+        id: r.get(0)?,
+        occurred_on: r.get(1)?,
+        time_slot: r.get(2)?,
+        name: r.get(3)?,
+        kcal: r.get(4)?,
+        protein_g: r.get(5)?,
+        carb_g: r.get(6)?,
+        fat_g: r.get(7)?,
+        note: r.get(8)?,
+        created_at: r.get(9)?,
+    })
+}
+
+pub fn list_meals_on(conn: &Connection, date: NaiveDate) -> Result<Vec<Meal>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, occurred_on, time_slot, name, kcal, protein_g, carb_g, fat_g, note, created_at
+         FROM meals WHERE occurred_on = ?1 ORDER BY created_at",
+    )?;
+    let rows = stmt.query_map(params![date.to_string()], row_to_meal)?;
+    rows.collect()
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn add_meal(
+    conn: &Connection,
+    time_slot: &str,
+    name: &str,
+    kcal: f64,
+    protein_g: f64,
+    carb_g: f64,
+    fat_g: f64,
+    note: Option<&str>,
+) -> Result<String> {
+    let id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO meals (id, occurred_on, time_slot, name, kcal, protein_g, carb_g, fat_g, note, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+        params![id, today().to_string(), time_slot, name, kcal, protein_g, carb_g, fat_g, note, now_ts()],
+    )?;
+    Ok(id)
+}
+
+pub fn delete_meal(conn: &Connection, meal_id: &str) -> Result<()> {
+    conn.execute("DELETE FROM meals WHERE id = ?1", params![meal_id])?;
+    Ok(())
+}
+
+pub fn kcal_today(conn: &Connection) -> Result<f64> {
+    conn.query_row(
+        "SELECT COALESCE(SUM(kcal), 0) FROM meals WHERE occurred_on = ?1",
+        params![today().to_string()],
+        |r| r.get(0),
+    )
 }
 
 // ----------------------------------------------------------------- tasks --

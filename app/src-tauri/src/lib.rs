@@ -40,6 +40,11 @@ pub fn run() {
             commands::complete_task,
             commands::delete_task,
             commands::get_weather,
+            commands::search_food_items,
+            commands::add_food_item,
+            commands::get_meals_today,
+            commands::add_meal,
+            commands::delete_meal,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -73,3 +73,30 @@ CREATE TABLE IF NOT EXISTS weather_cache (
   fetched_at   INTEGER PRIMARY KEY,
   payload_json TEXT NOT NULL
 );
+
+-- Sofra: meal/calorie tracking. food_items is a small packaged list plus
+-- anything the user defines; meals are the actual log entries.
+CREATE TABLE IF NOT EXISTS food_items (
+  id               TEXT PRIMARY KEY,
+  name             TEXT NOT NULL,
+  kcal_per_100g    REAL NOT NULL,
+  protein_per_100g REAL NOT NULL DEFAULT 0,
+  carb_per_100g    REAL NOT NULL DEFAULT 0,
+  fat_per_100g     REAL NOT NULL DEFAULT 0,
+  user_defined     INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS meals (
+  id          TEXT PRIMARY KEY,
+  occurred_on TEXT NOT NULL,
+  time_slot   TEXT NOT NULL CHECK (time_slot IN ('breakfast', 'lunch', 'dinner', 'snack')),
+  name        TEXT NOT NULL,
+  kcal        REAL NOT NULL,
+  protein_g   REAL NOT NULL DEFAULT 0,
+  carb_g      REAL NOT NULL DEFAULT 0,
+  fat_g       REAL NOT NULL DEFAULT 0,
+  note        TEXT,
+  created_at  INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_meals_day ON meals(occurred_on);

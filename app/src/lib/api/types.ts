@@ -72,6 +72,37 @@ export interface Task {
   created_at: number;
 }
 
+export interface FoodItem {
+  id: string;
+  name: string;
+  kcal_per_100g: number;
+  protein_per_100g: number;
+  carb_per_100g: number;
+  fat_per_100g: number;
+  user_defined: boolean;
+}
+
+export type TimeSlot = 'breakfast' | 'lunch' | 'dinner' | 'snack';
+
+export interface Meal {
+  id: string;
+  occurred_on: string;
+  time_slot: TimeSlot;
+  name: string;
+  kcal: number;
+  protein_g: number;
+  carb_g: number;
+  fat_g: number;
+  note: string | null;
+  created_at: number;
+}
+
+export interface MealsView {
+  meals: Meal[];
+  kcal_total: number;
+  kcal_budget: number;
+}
+
 export interface WeatherSnapshot {
   fetched_at: number;
   temperature_c: number;
@@ -97,4 +128,6 @@ export interface QuietModeView {
   inner_weather: 'clear' | 'radiant' | 'heavy' | 'stormy';
   path: PathDay[];
   milestones: Milestone[];
+  kcal_today: number;
+  kcal_budget: number;
 }

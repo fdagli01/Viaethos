@@ -14,5 +14,6 @@ pub fn init(app_data_dir: &std::path::Path) -> Connection {
     conn.pragma_update(None, "foreign_keys", true).ok();
     conn.execute_batch(MIGRATION_0001).expect("run migrations");
     repo::seed_if_empty(&conn).expect("seed default pillars/actions");
+    repo::seed_food_items_if_empty(&conn).expect("seed default food items");
     conn
 }
