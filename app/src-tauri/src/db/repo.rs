@@ -5,7 +5,7 @@ use rusqlite::{params, Connection, OptionalExtension, Result};
 use uuid::Uuid;
 
 use crate::domain::models::{
-    Action, ActionKind, Course, Entry, FoodItem, Lesson, Meal, Pillar, Schedule, Task,
+    Action, ActionKind, Course, Entry, FoodItem, Lesson, Meal, Pillar, Schedule, SleepLog, Task,
 };
 
 pub fn today() -> NaiveDate {
@@ -407,6 +407,56 @@ pub fn kcal_today(conn: &Connection) -> Result<f64> {
         params![today().to_string()],
         |r| r.get(0),
     )
+}
+
+// ------------------------------------------------------------------ Uyku --
+
+fn row_to_sleep_log(r: &rusqlite::Row) -> rusqlite::Result<SleepLog> {
+    Ok(SleepLog {
+        id: r.get(0)?,
+        date: r.get(1)?,
+        bed_at: r.get(2)?,
+        woke_at: r.get(3)?,
+        quality_1_5: r.get(4)?,
+        created_at: r.get(5)?,
+    })
+}
+
+pub fn log_sleep(
+    conn: &Connection,
+    date: &str,
+    bed_at: &str,
+    woke_at: &str,
+    quality_1_5: i64,
+) -> Result<String> {
+    let id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO sleep_logs (id, date, bed_at, woke_at, quality_1_5, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+         ON CONFLICT(date) DO UPDATE SET
+            bed_at = excluded.bed_at, woke_at = excluded.woke_at,
+            quality_1_5 = excluded.quality_1_5",
+        params![id, date, bed_at, woke_at, quality_1_5, now_ts()],
+    )?;
+    Ok(id)
+}
+
+pub fn get_sleep_on(conn: &Connection, date: NaiveDate) -> Result<Option<SleepLog>> {
+    conn.query_row(
+        "SELECT id, date, bed_at, woke_at, quality_1_5, created_at FROM sleep_logs WHERE date = ?1",
+        params![date.to_string()],
+        row_to_sleep_log,
+    )
+    .optional()
+}
+
+pub fn sleep_by_day(conn: &Connection, since: NaiveDate) -> Result<Vec<SleepLog>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, date, bed_at, woke_at, quality_1_5, created_at
+         FROM sleep_logs WHERE date >= ?1 ORDER BY date",
+    )?;
+    let rows = stmt.query_map(params![since.to_string()], row_to_sleep_log)?;
+    rows.collect()
 }
 
 // ------------------------------------------------------------- Müfredat --

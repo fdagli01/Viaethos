@@ -4,8 +4,9 @@
   import Today from './lib/components/Today.svelte';
   import Ledger from './lib/components/Ledger.svelte';
   import QuietMode from './lib/components/QuietMode.svelte';
+  import MementoMori from './lib/components/MementoMori.svelte';
 
-  let screen = $state<'quiet' | 'today' | 'ledger'>('quiet');
+  let screen = $state<'quiet' | 'today' | 'ledger' | 'memento'>('quiet');
 
   onMount(() => {
     today.init();
@@ -23,6 +24,9 @@
       <button class:active={screen === 'ledger'} onclick={() => (screen = 'ledger')}
         >The Ledger</button
       >
+      <button class:active={screen === 'memento'} onclick={() => (screen = 'memento')}
+        >Memento Mori</button
+      >
     </div>
     <span class="points">{today.view?.total_points.toLocaleString() ?? ''} pts</span>
   </div>
@@ -31,7 +35,9 @@
     <div class="view qm-view"><QuietMode /></div>
   {:else if screen === 'today'}
     <Today />
-  {:else}
+  {:else if screen === 'ledger'}
     <Ledger />
+  {:else}
+    <MementoMori />
   {/if}
 </div>

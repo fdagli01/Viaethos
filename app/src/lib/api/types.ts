@@ -50,11 +50,18 @@ export interface StreakRow {
   best: number;
 }
 
+export interface SleepDay {
+  date: string;
+  hours: number;
+  quality_1_5: number | null;
+}
+
 export interface LedgerStats {
   total_points: number;
   points_trend: DayPoint[];
   focus_by_pillar_day: PillarFocusDay[];
   streaks: StreakRow[];
+  sleep_by_day: SleepDay[];
 }
 
 export interface PathDay {
@@ -125,6 +132,21 @@ export interface CourseView {
   due_lessons: Lesson[];
 }
 
+export interface MementoMoriView {
+  birth_date: string | null;
+  weeks_lived: number | null;
+  weeks_total: number;
+}
+
+export interface SleepLog {
+  id: string;
+  date: string;
+  bed_at: string;
+  woke_at: string;
+  quality_1_5: number;
+  created_at: number;
+}
+
 export interface WeatherSnapshot {
   fetched_at: number;
   temperature_c: number;
@@ -153,4 +175,6 @@ export interface QuietModeView {
   kcal_today: number;
   kcal_budget: number;
   course_bands: { name: string; color_token: string; ratio: number }[];
+  sleep_hours: number | null;
+  sleep_quality: number | null;
 }

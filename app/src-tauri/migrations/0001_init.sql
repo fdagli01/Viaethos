@@ -128,3 +128,14 @@ CREATE TABLE IF NOT EXISTS lessons (
 );
 
 CREATE INDEX IF NOT EXISTS idx_lessons_course ON lessons(course_id, planned_on);
+
+-- Uyku: one log per night. `date` is the wake-up morning's date, so "last
+-- night" is always a simple lookup by today's date.
+CREATE TABLE IF NOT EXISTS sleep_logs (
+  id          TEXT PRIMARY KEY,
+  date        TEXT NOT NULL UNIQUE,
+  bed_at      TEXT NOT NULL,   -- 'HH:MM', the evening before `date`
+  woke_at     TEXT NOT NULL,   -- 'HH:MM', on `date`
+  quality_1_5 INTEGER NOT NULL CHECK (quality_1_5 BETWEEN 1 AND 5),
+  created_at  INTEGER NOT NULL
+);

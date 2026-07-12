@@ -71,8 +71,16 @@
         ? { ratio: view.kcal_today / view.kcal_budget, overBudget: view.kcal_today > view.kcal_budget }
         : undefined,
       view.course_bands.map((b) => ({ ratio: b.ratio })),
+      sleepHaze(),
     );
     canvasEl.style.filter = filter;
+  }
+
+  // No log yet means no judgment — a clear night by default, not a hazy one.
+  function sleepHaze(): number {
+    if (!view || view.sleep_hours == null || view.sleep_quality == null) return 0;
+    const score = (view.sleep_quality / 5) * 0.5 + Math.min(view.sleep_hours / 8, 1) * 0.5;
+    return Math.max(0, Math.min((1 - score) * 0.5, 0.5));
   }
 
   async function refresh() {
@@ -146,6 +154,9 @@
         <div class="qm-daysum">
           <b>{view.honored_today} of {view.due_today}</b> honored<br />
           <b>{fmtFocus(view.focus_minutes_today)}</b> in focus
+          {#if view.sleep_hours != null}
+            <br /><b>{view.sleep_hours.toFixed(1)}h</b> slept
+          {/if}
         </div>
       {/if}
     </div>

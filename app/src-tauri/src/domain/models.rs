@@ -113,6 +113,33 @@ pub struct Lesson {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SleepLog {
+    pub id: String,
+    pub date: String,
+    pub bed_at: String,
+    pub woke_at: String,
+    pub quality_1_5: i64,
+    pub created_at: i64,
+}
+
+impl SleepLog {
+    /// Hours slept, handling the overnight wrap (bed_at the evening before,
+    /// woke_at the morning of `date`).
+    pub fn hours(&self) -> f64 {
+        fn to_minutes(hhmm: &str) -> Option<i64> {
+            let (h, m) = hhmm.split_once(':')?;
+            Some(h.parse::<i64>().ok()? * 60 + m.parse::<i64>().ok()?)
+        }
+        let bed = to_minutes(&self.bed_at).unwrap_or(0);
+        let mut woke = to_minutes(&self.woke_at).unwrap_or(0);
+        if woke <= bed {
+            woke += 24 * 60;
+        }
+        (woke - bed) as f64 / 60.0
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FoodItem {
     pub id: String,
     pub name: String,

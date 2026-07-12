@@ -391,6 +391,89 @@ pub fn delete_meal(db: State<DbState>, meal_id: String) -> Result<MealsView, Str
     build_meals_view(&conn)
 }
 
+// -------------------------------------------------------------- Memento Mori --
+
+/// Not user-configurable in v0.6 — a single fixed horizon keeps the grid a
+/// stable, honest reference rather than a number to negotiate with.
+const LIFE_EXPECTANCY_YEARS: i64 = 80;
+
+#[derive(Serialize)]
+pub struct MementoMoriView {
+    pub birth_date: Option<String>,
+    pub weeks_lived: Option<i64>,
+    pub weeks_total: i64,
+}
+
+fn build_memento_mori_view(conn: &rusqlite::Connection) -> Result<MementoMoriView, String> {
+    let birth_date = repo::get_setting(conn, "birth_date").map_err(|e| e.to_string())?;
+    let weeks_total = LIFE_EXPECTANCY_YEARS * 52;
+    let weeks_lived = birth_date
+        .as_deref()
+        .and_then(|s| chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").ok())
+        .map(|birth| (repo::today() - birth).num_days() / 7);
+    Ok(MementoMoriView {
+        birth_date,
+        weeks_lived,
+        weeks_total,
+    })
+}
+
+#[tauri::command]
+pub fn get_memento_mori(db: State<DbState>) -> Result<MementoMoriView, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    build_memento_mori_view(&conn)
+}
+
+#[tauri::command]
+pub fn set_birth_date(db: State<DbState>, birth_date: String) -> Result<MementoMoriView, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    repo::set_setting(&conn, "birth_date", &birth_date).map_err(|e| e.to_string())?;
+    build_memento_mori_view(&conn)
+}
+
+// ------------------------------------------------------------------- Uyku --
+
+#[tauri::command]
+pub fn get_last_sleep(
+    db: State<DbState>,
+) -> Result<Option<crate::domain::models::SleepLog>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    repo::get_sleep_on(&conn, repo::today()).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn log_sleep(
+    app: tauri::AppHandle,
+    db: State<DbState>,
+    date: String,
+    bed_at: String,
+    woke_at: String,
+    quality: i64,
+) -> Result<crate::domain::models::SleepLog, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let date_parsed = chrono::NaiveDate::parse_from_str(&date, "%Y-%m-%d")
+        .map_err(|e| e.to_string())?;
+    let already_logged = repo::get_sleep_on(&conn, date_parsed)
+        .map_err(|e| e.to_string())?
+        .is_some();
+
+    repo::log_sleep(&conn, &date, &bed_at, &woke_at, quality).map_err(|e| e.to_string())?;
+
+    if !already_logged {
+        let pillars = repo::list_pillars(&conn).map_err(|e| e.to_string())?;
+        if let Some(life) = pillars.iter().find(|p| p.name == "Life") {
+            repo::insert_ledger(&conn, &life.id, None, None, ethos::sleep_log_points(), "sleep_logged")
+                .map_err(|e| e.to_string())?;
+        }
+    }
+
+    let log = repo::get_sleep_on(&conn, date_parsed)
+        .map_err(|e| e.to_string())?
+        .ok_or("sleep log not found after insert")?;
+    let _ = app.emit("entry-logged", &log.id);
+    Ok(log)
+}
+
 // --------------------------------------------------------------- Müfredat --
 
 #[derive(Serialize)]
@@ -571,11 +654,19 @@ pub struct StreakRow {
 }
 
 #[derive(Serialize)]
+pub struct SleepDay {
+    pub date: String,
+    pub hours: f64,
+    pub quality_1_5: Option<i64>,
+}
+
+#[derive(Serialize)]
 pub struct LedgerStats {
     pub total_points: i64,
     pub points_trend: Vec<DayPoint>,
     pub focus_by_pillar_day: Vec<PillarFocusDay>,
     pub streaks: Vec<StreakRow>,
+    pub sleep_by_day: Vec<SleepDay>,
 }
 
 #[tauri::command]
@@ -643,11 +734,26 @@ pub fn get_ledger_stats(db: State<DbState>) -> Result<LedgerStats, String> {
 
     let total_points = repo::total_points(&conn).map_err(|e| e.to_string())?;
 
+    let sleep_since = today - Duration::days(6);
+    let sleep_logs = repo::sleep_by_day(&conn, sleep_since).map_err(|e| e.to_string())?;
+    let mut sleep_by_day = Vec::new();
+    let mut d = sleep_since;
+    while d <= today {
+        let log = sleep_logs.iter().find(|s| s.date == d.to_string());
+        sleep_by_day.push(SleepDay {
+            date: d.to_string(),
+            hours: log.map(|s| s.hours()).unwrap_or(0.0),
+            quality_1_5: log.map(|s| s.quality_1_5),
+        });
+        d += Duration::days(1);
+    }
+
     Ok(LedgerStats {
         total_points,
         points_trend,
         focus_by_pillar_day,
         streaks,
+        sleep_by_day,
     })
 }
 
@@ -686,6 +792,8 @@ pub struct QuietModeView {
     pub kcal_today: f64,
     pub kcal_budget: f64,
     pub course_bands: Vec<CourseBand>,
+    pub sleep_hours: Option<f64>,
+    pub sleep_quality: Option<i64>,
 }
 
 /// Inner Weather is a manual, non-judgmental self-report — never inferred
@@ -791,6 +899,12 @@ pub fn get_quiet_mode(db: State<DbState>) -> Result<QuietModeView, String> {
         })
         .collect();
 
+    let last_sleep = repo::get_sleep_on(&conn, today).map_err(|e| e.to_string())?;
+    let (sleep_hours, sleep_quality) = match &last_sleep {
+        Some(s) => (Some(s.hours()), Some(s.quality_1_5)),
+        None => (None, None),
+    };
+
     Ok(QuietModeView {
         honored_today,
         due_today,
@@ -803,6 +917,8 @@ pub fn get_quiet_mode(db: State<DbState>) -> Result<QuietModeView, String> {
         kcal_today,
         kcal_budget,
         course_bands,
+        sleep_hours,
+        sleep_quality,
     })
 }
 

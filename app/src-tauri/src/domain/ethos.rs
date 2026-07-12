@@ -6,6 +6,7 @@ const TICK_POINTS: i64 = 5;
 const TASK_POINTS: i64 = 3;
 const MEAL_POINTS: i64 = 2;
 const LESSON_POINTS: i64 = 4;
+const SLEEP_LOG_POINTS: i64 = 3;
 const FOCUS_POINTS_PER_MINUTE: i64 = 1;
 const INTENTION_SEALED_BONUS: i64 = 5;
 const STREAK_CAP_DAYS: i64 = 30;
@@ -43,6 +44,13 @@ pub fn meal_points() -> i64 {
 /// already covers it — this exists so standalone completion isn't free.
 pub fn lesson_points() -> i64 {
     LESSON_POINTS
+}
+
+/// Points for logging a night's sleep. Flat, and awarded for the record
+/// itself — a rough night logged honestly is worth exactly as much as a
+/// good one, never less.
+pub fn sleep_log_points() -> i64 {
+    SLEEP_LOG_POINTS
 }
 
 /// Points for a completed Focus Session, given elapsed minutes and streak.

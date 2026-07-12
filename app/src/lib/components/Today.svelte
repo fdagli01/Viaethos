@@ -10,6 +10,7 @@
   import TaskList from './TaskList.svelte';
   import Sofra from './Sofra.svelte';
   import Mufredat from './Mufredat.svelte';
+  import Sleep from './Sleep.svelte';
 
   function enterRitual(action: ActionView) {
     ritual.open(action);
@@ -31,6 +32,7 @@
     <TaskList />
     <Sofra />
     <Mufredat />
+    <Sleep />
   {/if}
 </div>
 

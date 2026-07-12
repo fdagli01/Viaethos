@@ -4,7 +4,9 @@ import type {
   FoodItem,
   LedgerStats,
   MealsView,
+  MementoMoriView,
   QuietModeView,
+  SleepLog,
   Task,
   TimeSlot,
   TodayView,
@@ -65,4 +67,9 @@ export const api = {
     invoke<CourseView[]>('add_lesson', { courseId, title, plannedOn }),
   completeLesson: (lessonId: string) => invoke<CourseView[]>('complete_lesson', { lessonId }),
   skipLesson: (lessonId: string) => invoke<CourseView[]>('skip_lesson', { lessonId }),
+  getLastSleep: () => invoke<SleepLog | null>('get_last_sleep'),
+  logSleep: (date: string, bedAt: string, wokeAt: string, quality: number) =>
+    invoke<SleepLog>('log_sleep', { date, bedAt, wokeAt, quality }),
+  getMementoMori: () => invoke<MementoMoriView>('get_memento_mori'),
+  setBirthDate: (birthDate: string) => invoke<MementoMoriView>('set_birth_date', { birthDate }),
 };

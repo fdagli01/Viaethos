@@ -43,6 +43,12 @@
     stats ? Math.max(1, ...stats.points_trend.map((p) => p.points)) : 1,
   );
 
+  const SLEEP_TARGET_HOURS = 8;
+  const maxSleepHours = $derived(
+    stats ? Math.max(SLEEP_TARGET_HOURS + 1, ...stats.sleep_by_day.map((d) => d.hours)) : 9,
+  );
+  const sleepRefY = $derived(120 - (SLEEP_TARGET_HOURS / maxSleepHours) * 110);
+
   function linePath(): string {
     if (!stats) return '';
     const w = 600;
@@ -109,6 +115,36 @@
           {/each}
           <text x={x + barW / 2} y="134" font-size="9" fill="var(--ink-faint)" text-anchor="middle">
             {day.date.slice(5)}
+          </text>
+        {/each}
+      </svg>
+    </div>
+
+    <div class="card">
+      <h3>Sleep &middot; Last 7 Days</h3>
+      <svg viewBox="0 0 600 150" width="100%" height="150" role="img" aria-label="Sleep hours vs 8-hour target">
+        <line
+          x1="0"
+          y1={sleepRefY}
+          x2="600"
+          y2={sleepRefY}
+          stroke="var(--ink-faint)"
+          stroke-dasharray="4 3"
+          stroke-width="1"
+        />
+        <text x="596" y={sleepRefY - 4} font-size="9" fill="var(--ink-faint)" text-anchor="end">8h target</text>
+        {#each stats.sleep_by_day as day, i}
+          {@const barW = 600 / stats.sleep_by_day.length - 8}
+          {@const x = i * (600 / stats.sleep_by_day.length) + 4}
+          {@const barH = (day.hours / maxSleepHours) * 110}
+          {#if day.hours > 0}
+            <rect x={x} y={120 - barH} width={barW} height={barH} fill="var(--life)" rx="2" />
+          {/if}
+          <text x={x + barW / 2} y="134" font-size="9" fill="var(--ink-faint)" text-anchor="middle">
+            {day.date.slice(5)}
+          </text>
+          <text x={x + barW / 2} y="146" font-size="10" fill="var(--craft)" text-anchor="middle">
+            {day.quality_1_5 ? '★'.repeat(day.quality_1_5) : '—'}
           </text>
         {/each}
       </svg>

@@ -653,6 +653,16 @@ function paintPrecipitation(
   }
 }
 
+// Night-sky clarity — Uyku's mark on the scene. Only visible after dark;
+// a well-rested night leaves the stars and moon halo untouched, a rough
+// or unlogged night hazes them faintly. Independent of Inner Weather and
+// real weather — this is the body's own signal, not the mind's or the sky's.
+function paintNightHaze(ctx: CanvasRenderingContext2D, W: number, horizonY: number, dk: number, intensity: number) {
+  if (intensity <= 0 || dk <= 0) return;
+  ctx.fillStyle = `rgba(60,64,84,${(intensity * dk * 0.35).toFixed(3)})`;
+  ctx.fillRect(0, 0, W, horizonY + 2);
+}
+
 // Chimney smoke — Sofra's mark on the scene. Puffs thicken as the day's
 // logged meals approach the calorie budget; smoke darkens once over it.
 // No smoke at all just means nothing has been logged yet today.
@@ -691,6 +701,7 @@ export function renderPainting(
   real?: RealWeatherInput,
   sofra?: { ratio: number; overBudget: boolean },
   courseBands?: CourseBand[],
+  sleepHaze?: number,
 ): string {
   const [top, mid, hor] = skyAt(h);
   const wx = WEATHER[weather];
@@ -728,6 +739,7 @@ export function renderPainting(
   const dk = darkness(h);
   paintStars(ctx, W, horizonY, dk, 900);
   paintCrows(ctx, W, horizonY, dk, wx, 500);
+  paintNightHaze(ctx, W, horizonY, dk, sleepHaze ?? 0);
 
   const groundBase = mix('rgb(196,167,74)', 'rgb(14,16,28)', Math.min(dk * 1.15, 0.92));
   const groundGrad = ctx.createLinearGradient(0, horizonY, 0, H);

@@ -50,6 +50,10 @@ pub fn run() {
             commands::add_lesson,
             commands::complete_lesson,
             commands::skip_lesson,
+            commands::get_last_sleep,
+            commands::log_sleep,
+            commands::get_memento_mori,
+            commands::set_birth_date,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

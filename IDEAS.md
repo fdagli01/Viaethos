@@ -539,3 +539,43 @@ doğruladım — derinlik 0→1 gün, derinlik 1→3 gün, derinlik 2→7 gün,
 tam beklenen sırayla.
 
 Roadmap'in geri kalanı: **v0.6 — Uyku + istatistik + Memento Mori**.
+
+## 21. v0.6: Uyku + Memento Mori — Yol Haritası Tamamlandı
+
+Roadmap'teki son adım v0.6 tamamlandı. **Uyku**: `sleep_logs` tablosu
+(`date` her zaman uyanılan sabahın tarihi, `bed_at`/`woke_at` "HH:MM").
+`SleepLog::hours()` gece yarısını geçen aralığı doğru hesaplıyor (23:30→07:00
+= 7.5 saat). Kayıt Life pillar'ına sabit +3 puan yazıyor — ama upsert
+üzerinden aynı geceyi güncellersen puan tekrar yazılmıyor (`already_logged`
+kontrolü), yoksa gece boyu form değiştirip her kaydettiğinde puan
+çoğaltılırdı.
+
+Today ekranında **Uyku** bölümü: yatış/kalkış saatleri + 1-5 yıldız kalite.
+Quiet Mode'da gece gökyüzünün berraklığı artık gerçek: iyi uyunmuş bir gece
+yıldızları/ay'ı hiç bulandırmıyor, kötü ya da hiç kaydedilmemiş bir gece
+hafif bir pus katıyor — ama **kayıt yoksa pus da yok** (yargısız kayıt
+ilkesi burada da geçerli: eksik veri asla "kötü" sayılmıyor). The
+Ledger'a 8 saatlik referans çizgili bir uyku grafiği eklendi, kalite
+yıldızlarla ikincil kodlanıyor (renk tek başına anlam taşımasın diye).
+
+**Memento Mori**: dördüncü sekme. Doğum tarihi bir kere `settings.birth_date`
+olarak giriliyor; 80 yıllık sabit bir ufuk (bilinçli olarak
+kullanıcı-ayarlanabilir değil — pazarlık edilecek bir sayı değil, sabit
+dürüst bir referans) üzerinden yaşanan/kalan hafta sayısı bir SVG
+ızgarasında gösteriliyor, altında Marcus Aurelius'tan bir alıntı.
+
+Doğrulama: `cargo check`/`npm build+check` temiz; yeni şemayla derlenen
+ikili Xvfb altında çöküşsüz çalıştı; uyku saati hesabı ve hafta matematiği
+Python'da birebir aynı formüllerle bağımsız doğrulandı.
+
+---
+
+**Roadmap v0.1–v0.6 tamamlandı.** Via Ethos artık gerçek bir Tauri v2 +
+Svelte 5 + SQLite uygulaması: dört ekran (Quiet Mode / Today / The Ledger
+/ Memento Mori), tek bir `ethos_ledger` üzerinden akan tek puan sistemi,
+ve "Tablodaki Her Şey Canlı" ilkesiyle yerleştirilmiş yedi modül (Focus/
+Tick, To-Do, Sofra, gerçek hava durumu, Müfredat, Uyku, İç Hava). Bundan
+sonraki iş artık yeni modül eklemekten çok, mevcut olanı gerçek kullanımda
+sağlamlaştırmak: bir Ayarlar ekranı (gün sınırı, kalori bütçesi, hava
+konumu, ömür beklentisi gibi şu an sabit kodlanmış değerler için),
+Path'in tam görünümü, ve Manage (pillar/action düzenleme) ekranı.
