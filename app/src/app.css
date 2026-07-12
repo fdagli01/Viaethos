@@ -96,6 +96,11 @@ button {
   padding: 24px;
 }
 
+.view.qm-view {
+  padding: 0;
+  overflow: hidden;
+}
+
 .pillar-section {
   margin-bottom: 22px;
   border: 1px solid var(--card-border);

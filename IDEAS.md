@@ -392,3 +392,28 @@ gerçek bir Tauri v2 + Svelte 5 (runes) + SQLite (rusqlite) projesi:
   headless Xvfb altında derlenen ikili dosya çalıştırıldı, SQLite dosyası
   oluşup varsayılan pillar/action seed'i doğru şekilde yazıldığı
   doğrulandı.
+
+## 16. Quiet Mode Gerçek Uygulamaya Taşındı
+
+`sessiz-mod.html`'deki canvas motoru (`app/src/lib/painting/engine.ts`) saf
+çizim fonksiyonları olarak koda taşındı; UI kısmı `QuietMode.svelte`'de.
+Üç ekran artık üstteki sekmeden geçişli: Quiet Mode (varsayılan açılış) /
+Today / The Ledger.
+
+Önemli bir tasarım kararı: **Inner Weather'ı asla üretkenlik verisinden
+türetmedik.** İlk dürtü "bugünkü tamamlanma oranına göre otomatik
+hesapla" idi, ama bu tam olarak §7'deki "yargısız kayıt" ilkesine aykırı
+düşer — az iş bitirilen bir günü otomatik olarak "Heavy/Stormy" ilan etmek
+bir yargıdır, tam da kaçınmak istediğimiz şey. Onun yerine Inner Weather
+saf bir **elle beyan** — kullanıcı dört küçük düğmeden birini seçiyor,
+`settings` tablosunda `inner_weather:{tarih}` anahtarıyla saklanıyor.
+Böylece kullanıcı kendi iç halini (bipolar dalgalanmalar dahil) tablonun
+diline çevirebiliyor, uygulama bunu ondan çıkarım yaparak değil.
+
+Gerçek veriyle beslenen kısımlar: saat (sistem saati, demo slider'ı
+kaldırıldı), günün özeti (bugün onurlandırılan/gereken aksiyon sayısı,
+odaklanılan dakika), Yol şeridi (son 14 gün, hangi pillar'ların o gün
+en az bir kez onurlandırıldığı — `pillar_mix_by_day`), toplam Ethos
+Puanı ve en iyi streak. "Day's Mosaic" (saatlik takvim şeridi) ve
+kişiselleştirilmiş özel programlar bilinçli olarak dışarıda bırakıldı —
+gerçek bir zamanlama/takvim veri modeli henüz yok, bu v2+ kapsamı.

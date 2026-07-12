@@ -307,3 +307,100 @@ pub fn get_ledger_stats(db: State<DbState>) -> Result<LedgerStats, String> {
         streaks,
     })
 }
+
+// -------------------------------------------------------------- Quiet Mode --
+
+#[derive(Serialize)]
+pub struct PathDay {
+    pub date: String,
+    pub pillar_colors: Vec<String>,
+}
+
+#[derive(Serialize)]
+pub struct QuietModeView {
+    pub honored_today: i64,
+    pub due_today: i64,
+    pub focus_minutes_today: i64,
+    pub total_points: i64,
+    pub best_streak: i64,
+    pub inner_weather: String,
+    pub path: Vec<PathDay>,
+}
+
+/// Inner Weather is a manual, non-judgmental self-report — never inferred
+/// from the ledger. See IDEAS.md's "yargisiz kayit" (judgment-free record)
+/// principle: deriving mood from task completion would turn a rest day into
+/// a verdict, which is exactly what this layer must not do.
+fn inner_weather_key(date: chrono::NaiveDate) -> String {
+    format!("inner_weather:{date}")
+}
+
+#[tauri::command]
+pub fn get_quiet_mode(db: State<DbState>) -> Result<QuietModeView, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let today_view = build_today_view(&conn)?;
+    let today = repo::today();
+
+    let due_today: i64 = today_view
+        .pillars
+        .iter()
+        .flat_map(|p| &p.actions)
+        .filter(|a| a.due_today)
+        .count() as i64;
+    let honored_today: i64 = today_view
+        .pillars
+        .iter()
+        .flat_map(|p| &p.actions)
+        .filter(|a| a.due_today && a.today_count >= a.target_per_day)
+        .count() as i64;
+
+    let focus_minutes_today = repo::focus_minutes_on(&conn, today).map_err(|e| e.to_string())?;
+
+    let best_streak = today_view
+        .pillars
+        .iter()
+        .flat_map(|p| &p.actions)
+        .map(|a| a.best_streak)
+        .max()
+        .unwrap_or(0);
+
+    let inner_weather = repo::get_setting(&conn, &inner_weather_key(today))
+        .map_err(|e| e.to_string())?
+        .unwrap_or_else(|| "clear".to_string());
+
+    let pillars = repo::list_pillars(&conn).map_err(|e| e.to_string())?;
+    let since = today - Duration::days(13);
+    let mix_by_day = repo::pillar_mix_by_day(&conn, since).map_err(|e| e.to_string())?;
+    let mut path = Vec::new();
+    let mut d = since;
+    while d <= today {
+        let pillar_ids = mix_by_day.get(&d).cloned().unwrap_or_default();
+        let pillar_colors = pillars
+            .iter()
+            .filter(|p| pillar_ids.contains(&p.id))
+            .map(|p| p.color_token.clone())
+            .collect();
+        path.push(PathDay {
+            date: d.to_string(),
+            pillar_colors,
+        });
+        d += Duration::days(1);
+    }
+
+    Ok(QuietModeView {
+        honored_today,
+        due_today,
+        focus_minutes_today,
+        total_points: today_view.total_points,
+        best_streak,
+        inner_weather,
+        path,
+    })
+}
+
+#[tauri::command]
+pub fn set_inner_weather(db: State<DbState>, weather: String) -> Result<(), String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let today = repo::today();
+    repo::set_setting(&conn, &inner_weather_key(today), &weather).map_err(|e| e.to_string())
+}

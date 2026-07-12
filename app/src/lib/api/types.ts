@@ -56,3 +56,18 @@ export interface LedgerStats {
   focus_by_pillar_day: PillarFocusDay[];
   streaks: StreakRow[];
 }
+
+export interface PathDay {
+  date: string;
+  pillar_colors: string[];
+}
+
+export interface QuietModeView {
+  honored_today: number;
+  due_today: number;
+  focus_minutes_today: number;
+  total_points: number;
+  best_streak: number;
+  inner_weather: 'clear' | 'radiant' | 'heavy' | 'stormy';
+  path: PathDay[];
+}

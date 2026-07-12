@@ -32,6 +32,8 @@ pub fn run() {
             commands::start_focus,
             commands::end_focus,
             commands::get_ledger_stats,
+            commands::get_quiet_mode,
+            commands::set_inner_weather,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

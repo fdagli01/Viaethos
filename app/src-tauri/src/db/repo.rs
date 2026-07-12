@@ -258,6 +258,65 @@ pub fn insert_ledger(
     Ok(())
 }
 
+// ------------------------------------------------------------- settings --
+
+pub fn get_setting(conn: &Connection, key: &str) -> Result<Option<String>> {
+    conn.query_row(
+        "SELECT value FROM settings WHERE key = ?1",
+        params![key],
+        |r| r.get(0),
+    )
+    .optional()
+}
+
+pub fn set_setting(conn: &Connection, key: &str, value: &str) -> Result<()> {
+    conn.execute(
+        "INSERT INTO settings (key, value) VALUES (?1, ?2)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        params![key, value],
+    )?;
+    Ok(())
+}
+
+/// Distinct pillar ids honored (at least one completed entry) on each day,
+/// since `since` (inclusive) — feeds the Path ribbon's per-day color mix.
+pub fn pillar_mix_by_day(
+    conn: &Connection,
+    since: NaiveDate,
+) -> Result<BTreeMap<NaiveDate, Vec<String>>> {
+    let mut stmt = conn.prepare(
+        "SELECT DISTINCT e.occurred_on, a.pillar_id
+         FROM entries e
+         JOIN actions a ON a.id = e.action_id
+         WHERE e.outcome = 'completed' AND e.occurred_on >= ?1
+         ORDER BY e.occurred_on",
+    )?;
+    let rows = stmt.query_map(params![since.to_string()], |r| {
+        let date_str: String = r.get(0)?;
+        let pillar_id: String = r.get(1)?;
+        Ok((date_str, pillar_id))
+    })?;
+    let mut map: BTreeMap<NaiveDate, Vec<String>> = BTreeMap::new();
+    for row in rows {
+        let (date_str, pillar_id) = row?;
+        if let Ok(date) = NaiveDate::parse_from_str(&date_str, "%Y-%m-%d") {
+            map.entry(date).or_default().push(pillar_id);
+        }
+    }
+    Ok(map)
+}
+
+/// Total minutes spent in completed focus sessions on one day.
+pub fn focus_minutes_on(conn: &Connection, date: NaiveDate) -> Result<i64> {
+    conn.query_row(
+        "SELECT COALESCE(SUM((ended_at - started_at) / 60), 0)
+         FROM entries
+         WHERE kind = 'focus' AND outcome = 'completed' AND occurred_on = ?1",
+        params![date.to_string()],
+        |r| r.get(0),
+    )
+}
+
 // ------------------------------------------------------------ ledger agg --
 
 pub fn total_points(conn: &Connection) -> Result<i64> {
