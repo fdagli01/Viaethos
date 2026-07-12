@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { LedgerStats, QuietModeView, Task, TodayView } from './types';
+import type { LedgerStats, QuietModeView, Task, TodayView, WeatherSnapshot } from './types';
 
 export const api = {
   getToday: () => invoke<TodayView>('get_today'),
@@ -17,4 +17,5 @@ export const api = {
     invoke<Task[]>('add_task', { title, pillarId, dueOn }),
   completeTask: (taskId: string) => invoke<Task[]>('complete_task', { taskId }),
   deleteTask: (taskId: string) => invoke<Task[]>('delete_task', { taskId }),
+  getWeather: () => invoke<WeatherSnapshot | null>('get_weather'),
 };

@@ -1,6 +1,7 @@
 mod commands;
 mod db;
 mod domain;
+mod weather;
 
 use std::sync::Mutex;
 use tauri::Manager;
@@ -38,6 +39,7 @@ pub fn run() {
             commands::add_task,
             commands::complete_task,
             commands::delete_task,
+            commands::get_weather,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,15 +1,29 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { listen } from '@tauri-apps/api/event';
-  import { renderPainting, type WeatherName } from '../painting/engine';
+  import { renderPainting, conditionFromWmoCode, type WeatherName } from '../painting/engine';
   import { maximForDay } from '../painting/quotes';
   import { api } from '../api/commands';
   import { today } from '../stores/today.svelte';
-  import type { QuietModeView } from '../api/types';
+  import type { QuietModeView, WeatherSnapshot } from '../api/types';
 
   let canvasEl: HTMLCanvasElement;
   let view = $state<QuietModeView | null>(null);
+  let realWeather = $state<WeatherSnapshot | null>(null);
   let now = $state(new Date());
+
+  const realCondition = $derived(
+    realWeather ? conditionFromWmoCode(realWeather.weather_code) : null,
+  );
+  const conditionLabels: Record<string, string> = {
+    clear: 'Clear',
+    partly_cloudy: 'Partly cloudy',
+    overcast: 'Overcast',
+    fog: 'Fog',
+    rain: 'Rain',
+    storm: 'Storm',
+    snow: 'Snow',
+  };
 
   const hour = $derived(now.getHours() + now.getMinutes() / 60);
   const dayOfYear = $derived(
@@ -40,12 +54,30 @@
       canvasEl.height = H * dpr;
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const filter = renderPainting(ctx, W, H, hour, view.inner_weather);
+    const filter = renderPainting(
+      ctx,
+      W,
+      H,
+      hour,
+      view.inner_weather,
+      realWeather && realCondition
+        ? {
+            condition: realCondition,
+            windKmh: realWeather.wind_speed_kmh,
+            precipitationMm: realWeather.precipitation_mm,
+          }
+        : undefined,
+    );
     canvasEl.style.filter = filter;
   }
 
   async function refresh() {
     view = await api.getQuietMode();
+    draw();
+  }
+
+  async function refreshWeather() {
+    realWeather = await api.getWeather();
     draw();
   }
 
@@ -55,22 +87,26 @@
   }
 
   $effect(() => {
-    // hour/view changed — repaint
+    // hour/view/realWeather changed — repaint
     hour;
     view;
+    realWeather;
     draw();
   });
 
   onMount(() => {
     refresh();
+    refreshWeather();
     const clockId = setInterval(() => (now = new Date()), 1000);
     const repaintId = setInterval(draw, 60000);
+    const weatherId = setInterval(refreshWeather, 20 * 60 * 1000);
     const onResize = () => draw();
     window.addEventListener('resize', onResize);
     const unlistenPromise = listen('entry-logged', () => refresh());
     return () => {
       clearInterval(clockId);
       clearInterval(repaintId);
+      clearInterval(weatherId);
       window.removeEventListener('resize', onResize);
       unlistenPromise.then((un) => un());
     };
@@ -113,6 +149,12 @@
     <div class="qm-sky">
       <div class="qm-clock">{fmtClock(now).hm}<span class="qm-sec">:{fmtClock(now).s}</span></div>
       <div class="qm-date">{fmtDate(now)}</div>
+      {#if realWeather && realCondition}
+        <div class="qm-weather-real">
+          {Math.round(realWeather.temperature_c)}&deg; &middot; {conditionLabels[realCondition]}
+          {#if realWeather.stale}<span class="qm-stale"> &middot; last known</span>{/if}
+        </div>
+      {/if}
       {#if view}
         <div class="qm-chips">
           <div class="qm-chip-group">
@@ -292,6 +334,17 @@
     color: #c3bfce;
     letter-spacing: 0.14em;
     text-transform: uppercase;
+  }
+
+  .qm-weather-real {
+    margin-top: 10px;
+    font-size: 12.5px;
+    letter-spacing: 0.04em;
+    color: #c3bfce;
+  }
+  .qm-stale {
+    color: #8d88a0;
+    font-style: italic;
   }
 
   .qm-chips {

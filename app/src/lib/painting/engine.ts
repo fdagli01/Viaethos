@@ -3,6 +3,37 @@
 
 export type WeatherName = 'clear' | 'radiant' | 'heavy' | 'stormy';
 
+// ---- Real weather (Open-Meteo) — independent of the Inner Weather mood
+// layer above. This is what the sky actually shows outside; it never
+// changes brush turbulence, only adds a real-condition overlay on top.
+
+export type RealCondition =
+  | 'clear'
+  | 'partly_cloudy'
+  | 'overcast'
+  | 'fog'
+  | 'rain'
+  | 'storm'
+  | 'snow';
+
+export interface RealWeatherInput {
+  condition: RealCondition;
+  windKmh: number;
+  precipitationMm: number;
+}
+
+/** WMO weather code (Open-Meteo) -> simplified condition bucket. */
+export function conditionFromWmoCode(code: number): RealCondition {
+  if (code === 0) return 'clear';
+  if (code === 1 || code === 2) return 'partly_cloudy';
+  if (code === 3) return 'overcast';
+  if (code === 45 || code === 48) return 'fog';
+  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return 'rain';
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return 'snow';
+  if (code >= 95) return 'storm';
+  return 'clear';
+}
+
 export interface WeatherConfig {
   name: WeatherName;
   filter: string;
@@ -547,6 +578,49 @@ function paintWheatField(
   ctx.globalAlpha = 1;
 }
 
+// A soft grey veil over the sky for overcast/fog conditions — the real sun
+// stays hidden behind it regardless of the hour.
+function paintCloudVeil(ctx: CanvasRenderingContext2D, W: number, horizonY: number, amount: number) {
+  if (amount <= 0) return;
+  ctx.fillStyle = `rgba(180,184,196,${amount})`;
+  ctx.fillRect(0, 0, W, horizonY + 2);
+}
+
+// Diagonal rain (or near-vertical snow) streaks over the whole scene —
+// density tracks real precipitation, angle tracks real wind.
+function paintPrecipitation(
+  ctx: CanvasRenderingContext2D,
+  W: number,
+  H: number,
+  intensityMm: number,
+  windKmh: number,
+  isSnow: boolean,
+  seedBase: number,
+) {
+  const r = rng(seedBase + 111);
+  const count = Math.round(Math.min(intensityMm, 12) * (isSnow ? 18 : 40) + 20);
+  const tilt = Math.max(-0.6, Math.min(0.6, windKmh / 60));
+  for (let i = 0; i < count; i++) {
+    const x = r() * (W + 200) - 100;
+    const y = r() * H;
+    if (isSnow) {
+      ctx.fillStyle = `rgba(255,255,255,${0.35 + r() * 0.35})`;
+      ctx.beginPath();
+      ctx.arc(x, y, 1.2 + r() * 2, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      const len = 14 + r() * 22;
+      ctx.strokeStyle = `rgba(210,220,235,${0.18 + r() * 0.22})`;
+      ctx.lineWidth = 1 + r() * 1;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + tilt * len, y + len);
+      ctx.stroke();
+    }
+  }
+}
+
 /** Render one frame of the living landscape at hour `h` (0-24) into `ctx`. */
 export function renderPainting(
   ctx: CanvasRenderingContext2D,
@@ -554,10 +628,17 @@ export function renderPainting(
   H: number,
   h: number,
   weather: WeatherName,
+  real?: RealWeatherInput,
 ): string {
   const [top, mid, hor] = skyAt(h);
   const wx = WEATHER[weather];
   const horizonY = H * 0.62;
+
+  // Real wind tilts the wheat/meadow/path brushwork the same way Inner
+  // Weather turbulence does — reuses the existing `amp`-driven angle jitter,
+  // just nudged by the actual wind speed outside.
+  const windBoost = real ? Math.min(real.windKmh / 50, 1) * 0.7 : 0;
+  const groundWx = windBoost > 0 ? { ...wx, amp: wx.amp + windBoost } : wx;
 
   const g = ctx.createLinearGradient(0, 0, 0, horizonY);
   g.addColorStop(0, top);
@@ -595,9 +676,9 @@ export function renderPainting(
   ctx.fillRect(0, horizonY - 2, W, H - horizonY + 2);
 
   paintHouse(ctx, W, horizonY, dk, 500);
-  paintMeadow(ctx, W, horizonY, dk, wx, 500);
-  paintWheatField(ctx, W, H, horizonY, dk, wx, 500);
-  paintPath(ctx, W, H, horizonY, dk, wx, 500);
+  paintMeadow(ctx, W, horizonY, dk, groundWx, 500);
+  paintWheatField(ctx, W, H, horizonY, dk, groundWx, 500);
+  paintPath(ctx, W, H, horizonY, dk, groundWx, 500);
   paintTree(ctx, W, horizonY, dk, wx, 500);
 
   ctx.save();
@@ -608,6 +689,26 @@ export function renderPainting(
   ctx.fillStyle = mist;
   ctx.fillRect(0, horizonY - 40, W, 180);
   ctx.restore();
+
+  if (real) {
+    const cloudAmount =
+      real.condition === 'overcast'
+        ? 0.22
+        : real.condition === 'fog'
+          ? 0.32
+          : real.condition === 'partly_cloudy'
+            ? 0.08
+            : real.condition === 'rain' || real.condition === 'storm'
+              ? 0.16
+              : 0;
+    paintCloudVeil(ctx, W, horizonY, cloudAmount);
+
+    if (real.condition === 'rain' || real.condition === 'storm') {
+      paintPrecipitation(ctx, W, H, real.precipitationMm, real.windKmh, false, 700);
+    } else if (real.condition === 'snow') {
+      paintPrecipitation(ctx, W, H, Math.max(real.precipitationMm, 2), real.windKmh, true, 700);
+    }
+  }
 
   return wx.filter;
 }

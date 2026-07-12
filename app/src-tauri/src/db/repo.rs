@@ -380,6 +380,25 @@ pub fn focus_minutes_on(conn: &Connection, date: NaiveDate) -> Result<i64> {
     )
 }
 
+// ------------------------------------------------------------ weather --
+
+pub fn latest_weather_json(conn: &Connection) -> Result<Option<(i64, String)>> {
+    conn.query_row(
+        "SELECT fetched_at, payload_json FROM weather_cache ORDER BY fetched_at DESC LIMIT 1",
+        [],
+        |r| Ok((r.get(0)?, r.get(1)?)),
+    )
+    .optional()
+}
+
+pub fn insert_weather_json(conn: &Connection, fetched_at: i64, payload_json: &str) -> Result<()> {
+    conn.execute(
+        "INSERT INTO weather_cache (fetched_at, payload_json) VALUES (?1, ?2)",
+        params![fetched_at, payload_json],
+    )?;
+    Ok(())
+}
+
 // ------------------------------------------------------------ ledger agg --
 
 pub fn total_points(conn: &Connection) -> Result<i64> {

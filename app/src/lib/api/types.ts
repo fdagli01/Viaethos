@@ -72,6 +72,16 @@ export interface Task {
   created_at: number;
 }
 
+export interface WeatherSnapshot {
+  fetched_at: number;
+  temperature_c: number;
+  weather_code: number;
+  wind_speed_kmh: number;
+  precipitation_mm: number;
+  is_day: boolean;
+  stale: boolean;
+}
+
 export interface Milestone {
   title: string;
   color_token: string;

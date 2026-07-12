@@ -444,3 +444,32 @@ eklendi:
 Sıradaki adım roadmap'e göre v0.3: gerçek hava durumu (Open-Meteo) —
 tablonun gökyüzü artık dışarıdaki gerçek havayla senkron olacak, Inner
 Weather (fırça/ruh hali) katmanından bağımsız ikinci, gerçek bir katman.
+
+## 18. v0.3: Gerçek Hava Durumu — Open-Meteo
+
+Roadmap'teki v0.3 tamamlandı. Backend'de `weather.rs` (reqwest + rustls-tls,
+anahtarsız Open-Meteo `current` endpoint'i), `weather_cache` tablosu
+(tek satırlık değil, `fetched_at` bazlı en son kaydı okuyoruz — "offline'da
+son bilinen anlık görüntüye düş" mimarideki söz tutuldu). `get_weather`
+komutu: 20 dakikadan taze önbellek varsa onu döner; yoksa fetch dener;
+başarısızsa (offline) en son önbelleğe `stale: true` işaretiyle düşer;
+hiç önbellek yoksa `None` döner — hiçbir durumda panikleme yok.
+
+Kritik tasarım notu, mimariyle birebir: **gerçek hava ile İç Hava
+(Inner Weather) iki bağımsız katman**, hiç karışmıyorlar. Gerçek hava
+sadece görünür bir "dış dünya" efekti ekliyor — bulutluysa gökyüzüne
+gri bir perde, yağmur/kar varsa çapraz/düşey damlalar, rüzgar varsa
+buğday/çayır/patika fırça açılarına ekstra bir eğim — asla fırçanın
+kalınlığını/yoğunluğunu (mood'un alanı) değiştirmiyor.
+
+Konum: `settings` tablosunda `weather_lat`/`weather_lon` (varsayılan
+İstanbul — henüz bir Ayarlar ekranı yok, bu v0.4+ kapsamı).
+
+**Önemli sınırlama**: bu geliştirme kutusunun ağ politikası
+`api.open-meteo.com`'a giden istekleri engelliyor (agent proxy 403
+veriyor), yani gerçek API yanıtını bu ortamda canlı test edemedim.
+Onun yerine tam olarak test edebildiğim şey — ki mimarinin en kırılgan
+kısmı zaten budur — **offline/başarısız-istek yolu**: uygulama önbellek
+olmadan başlatıldı, istek engellendi, komut zarifçe `None` döndü, hiç
+panik/çökme olmadı. Gerçek API yanıtı kullanıcının kendi cihazında
+(ağ kısıtlaması olmayan) ilk çalıştırmada doğrulanmalı.

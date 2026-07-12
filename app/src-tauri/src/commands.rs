@@ -203,6 +203,70 @@ pub fn end_focus(
     Ok(view)
 }
 
+// ---------------------------------------------------------------- Weather --
+
+const WEATHER_TTL_SECONDS: i64 = 20 * 60;
+const DEFAULT_LAT: f64 = 41.0082;
+const DEFAULT_LON: f64 = 28.9784;
+
+fn weather_location(conn: &rusqlite::Connection) -> (f64, f64) {
+    let lat = repo::get_setting(conn, "weather_lat")
+        .ok()
+        .flatten()
+        .and_then(|s| s.parse::<f64>().ok())
+        .unwrap_or(DEFAULT_LAT);
+    let lon = repo::get_setting(conn, "weather_lon")
+        .ok()
+        .flatten()
+        .and_then(|s| s.parse::<f64>().ok())
+        .unwrap_or(DEFAULT_LON);
+    (lat, lon)
+}
+
+/// Real weather from Open-Meteo, cached in `weather_cache`. Falls back to the
+/// last known snapshot (marked `stale`) when offline; returns `None` only if
+/// no snapshot has ever been fetched. Never holds the DB lock across the
+/// network await — the mutex guard is dropped before any `.await`.
+#[tauri::command]
+pub async fn get_weather(
+    db: State<'_, DbState>,
+) -> Result<Option<crate::weather::WeatherSnapshot>, String> {
+    let (lat, lon, cached) = {
+        let conn = db.0.lock().map_err(|e| e.to_string())?;
+        let (lat, lon) = weather_location(&conn);
+        let cached = repo::latest_weather_json(&conn).map_err(|e| e.to_string())?;
+        (lat, lon, cached)
+    };
+
+    let now = repo::now_ts();
+    if let Some((fetched_at, payload)) = &cached {
+        if now - fetched_at < WEATHER_TTL_SECONDS {
+            let snapshot: crate::weather::WeatherSnapshot =
+                serde_json::from_str(payload).map_err(|e| e.to_string())?;
+            return Ok(Some(snapshot));
+        }
+    }
+
+    match crate::weather::fetch(lat, lon).await {
+        Ok(snapshot) => {
+            let payload = serde_json::to_string(&snapshot).map_err(|e| e.to_string())?;
+            let conn = db.0.lock().map_err(|e| e.to_string())?;
+            repo::insert_weather_json(&conn, snapshot.fetched_at, &payload)
+                .map_err(|e| e.to_string())?;
+            Ok(Some(snapshot))
+        }
+        Err(_) => match cached {
+            Some((_, payload)) => {
+                let mut snapshot: crate::weather::WeatherSnapshot =
+                    serde_json::from_str(&payload).map_err(|e| e.to_string())?;
+                snapshot.stale = true;
+                Ok(Some(snapshot))
+            }
+            None => Ok(None),
+        },
+    }
+}
+
 // ------------------------------------------------------------------ Tasks --
 
 #[tauri::command]

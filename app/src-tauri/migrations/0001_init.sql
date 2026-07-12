@@ -65,3 +65,11 @@ CREATE TABLE IF NOT EXISTS settings (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+-- Real weather (Open-Meteo). One cached snapshot; offline falls back to the
+-- last row when a fresh fetch fails. Independent of Inner Weather, which is
+-- a manual mood layer — real weather is what the sky actually shows outside.
+CREATE TABLE IF NOT EXISTS weather_cache (
+  fetched_at   INTEGER PRIMARY KEY,
+  payload_json TEXT NOT NULL
+);
