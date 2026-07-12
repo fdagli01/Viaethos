@@ -222,6 +222,73 @@ köşesinde küçük bir su birikintisi/kuyu (ilk referanstaki gibi),
 tarlanın ötesinde ikinci bir uzak bina, rüzgârda eğilen tek tük yabani
 otlar ön planda, Stormy'de ince yağmur çizgileri.
 
+## 13. Kişisel OS Genişlemesi: "Tablodaki Her Şey Canlı"
+
+Ürün sahibi kapsamı genişletti: ders planı, to-do, yemek/kalori
+takibi, ana ekranda gerçek hava durumu — tam bir kişisel işletim
+sistemi. Kilit tasarım kararı: **her modül tabloya bir sahne elemanı
+olarak yerleşir; veri ekranı yalnızca dokununca açılır.** Tablo özet,
+modüller derinliktir — böylece kapsam büyürken ana ekran asla gri bir
+dashboard'a dönüşmez.
+
+### Modül → sahne elemanı eşlemesi
+
+- **Gerçek hava durumu → gökyüzünün kendisi.** Open-Meteo'dan (ücretsiz,
+  anahtarsız) çekilir; dışarıda yağmur varsa tabloda yağmur çizgileri,
+  rüzgâr buğdayın eğimini artırır, sıcaklık ufuk pusuna işler. İç Hava
+  Durumu (ruh hali) fırça davranışını, gerçek hava içeriği belirler —
+  iki katman bağımsız ve birleşebilir. Dokununca saatlik/haftalık tahmin
+  paneli açılır. Offline'da son önbellek kullanılır.
+- **Beslenme & kalori (Sofra) → çiftlik evinin bacası.** Yemek
+  kaydettikçe baca tüter; kalori bütçesi aşılırsa duman koyulaşır.
+  Panel: öğün günlüğü, paketli yerel gıda listesi + kullanıcı tanımlı
+  yiyecekler, kcal/makro özetleri, su sayacı.
+- **Ders planı (Müfredat) → tarladaki sürülmüş sıralar.** Her ders bir
+  tarla şeridi; işlenen konu "ekilmiş" görünür. Panel: dersler → konular
+  → haftalık plan; çalışma bloğu bir Focus Session olarak Mozaiğe düşer;
+  tekrar günleri (spaced repetition) otomatik önerilir.
+- **To-Do → yol kenarındaki kilometre taşları.** Bugünün görevleri
+  patikaya dizilir; bitenler taş olarak yerleşir. Panel: hızlı ekleme,
+  tarih/pillar bağlama, Mozaiğe sürükleme.
+- **Uyku → ay ve yıldızların parlaklığı.** İyi uyunmuş gecede gökyüzü
+  berrak, az uyunmuşta puslu. Panel: yatış/kalkış, süre-kalite grafiği.
+- **İç Hava Durumu, Yol & Ethos:** mevcut (fırça + kargalar; patika +
+  taşlar + Memento Mori).
+
+### Navigasyon: "Dock" değil "Çerçeve"
+
+Alt kenardan kaydırma (veya dokunma) tablonun çerçevesini gösterir:
+çerçeve üzerinde pillar renkli 6-7 modül simgesi. Modül paneli tablonun
+üstüne **cam bir pano** gibi açılır (blur zemin; tablo arkada görünür
+kalır), iş bitince kapanır. Kapsam ne kadar büyürse büyüsün tablo asla
+kaybolmaz.
+
+### Veri modeli ekleri
+
+```
+courses        (id, name, pillar_id, color, target_hours_week)
+lessons        (id, course_id, title, planned_on, status, review_of)
+meals          (id, occurred_on, time_slot, name, kcal, protein_g,
+                carb_g, fat_g, note)
+food_items     (id, name, kcal_per_100g, protein/carb/fat_per_100g,
+                user_defined)
+sleep_logs     (id, date, bed_at, woke_at, quality_1_5)
+weather_cache  (fetched_at, payload_json)
+```
+
+Focus Session'lar `lesson_id`'ye bağlanabilir. Yemek/su/uyku kayıtları
+Ethos ledger'a küçük puanlar yazar (Body/Life) — tek puan sistemi tüm
+modülleri kapsar.
+
+### Yol haritası
+
+1. v0.1 Çekirdek: Tauri iskeleti + tablo + saat + Mozaik + Tick/Focus + SQLite
+2. v0.2 Planlama: To-Do + gün planlama (Mozaiğe sürükleme)
+3. v0.3 Hava: Open-Meteo + gerçek gökyüzü senkronu (+ mevcut İç Hava)
+4. v0.4 Sofra: yemek/kalori + baca mekaniği
+5. v0.5 Müfredat: ders planı + tarla sıraları + tekrar önerileri
+6. v0.6 Uyku + istatistik + Memento Mori
+
 ## 5. Ton Rehberi: Mistik Ruh, Kusursuz Kullanışlılık
 
 Netleştirilen ilke: **mistik/felsefi atmosfer korunur; "profesyonellik"

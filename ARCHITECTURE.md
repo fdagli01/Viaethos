@@ -113,6 +113,39 @@ ethos_ledger                       -- append-only; points are EARNED events
 settings (key TEXT PRIMARY KEY, value TEXT)  -- theme, day boundary, tray, defaults
 ```
 
+### v3 additions — Life OS modules
+
+The product scope now includes study planning, meal/calorie tracking,
+real weather on the main screen, and sleep. Each module maps to a scene
+element in the painted Quiet Mode (see IDEAS.md §13) and to its own
+tables; all of them feed the same `ethos_ledger` so one points system
+spans every module.
+
+```
+courses        (id, name, pillar_id, color_token, target_hours_week,
+                created_at, archived_at)
+lessons        (id, course_id, title, planned_on, status,        -- planned|done|skipped
+                review_of NULL,                                  -- spaced-repetition chain
+                created_at)
+meals          (id, occurred_on, time_slot,                      -- breakfast|lunch|dinner|snack
+                name, kcal, protein_g, carb_g, fat_g, note, created_at)
+food_items     (id, name, kcal_per_100g, protein_per_100g,
+                carb_per_100g, fat_per_100g, user_defined)
+sleep_logs     (id, date, bed_at, woke_at, quality_1_5)
+weather_cache  (fetched_at, payload_json)                        -- Open-Meteo; offline falls
+                                                                 -- back to last snapshot
+```
+
+Notes:
+- `sessions` gains a nullable `lesson_id` — a study block is just a Focus
+  Session bound to a lesson, so it lands in the Day's Mosaic and earns
+  points through the existing path.
+- Weather is fetched from Open-Meteo (free, no API key) by the Rust side
+  on a coarse interval; the painting's sky renders real conditions while
+  Inner Weather keeps driving brush behavior — independent, composable
+  layers.
+- Meals/water/sleep write small `ethos_ledger` entries against Body/Life.
+
 ### Design decisions
 
 - **`occurred_on` is a local date string with a user-configurable day
