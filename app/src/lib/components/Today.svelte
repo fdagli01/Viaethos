@@ -3,20 +3,16 @@
   import { today } from '../stores/today.svelte';
   import { tasks } from '../stores/tasks.svelte';
   import { meals } from '../stores/meals.svelte';
+  import { ritual } from '../stores/ritual.svelte';
   import type { ActionView } from '../api/types';
   import PillarSection from './PillarSection.svelte';
   import RitualModal from './RitualModal.svelte';
   import TaskList from './TaskList.svelte';
   import Sofra from './Sofra.svelte';
-
-  let ritualAction = $state<ActionView | null>(null);
+  import Mufredat from './Mufredat.svelte';
 
   function enterRitual(action: ActionView) {
-    ritualAction = action;
-  }
-
-  function closeRitual() {
-    ritualAction = null;
+    ritual.open(action);
   }
 
   onMount(() => {
@@ -34,9 +30,15 @@
     {/each}
     <TaskList />
     <Sofra />
+    <Mufredat />
   {/if}
 </div>
 
-{#if ritualAction}
-  <RitualModal action={ritualAction} onClose={closeRitual} />
+{#if ritual.target}
+  <RitualModal
+    action={ritual.target.action}
+    lessonId={ritual.target.lessonId}
+    lessonTitle={ritual.target.lessonTitle}
+    onClose={ritual.close}
+  />
 {/if}

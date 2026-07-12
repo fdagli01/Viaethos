@@ -153,10 +153,17 @@ pub fn start_focus(
     action_id: String,
     intention: Option<String>,
     planned_minutes: i64,
+    lesson_id: Option<String>,
 ) -> Result<TodayView, String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
-    repo::start_focus(&conn, &action_id, intention.as_deref(), planned_minutes)
-        .map_err(|e| e.to_string())?;
+    repo::start_focus(
+        &conn,
+        &action_id,
+        intention.as_deref(),
+        planned_minutes,
+        lesson_id.as_deref(),
+    )
+    .map_err(|e| e.to_string())?;
     build_today_view(&conn)
 }
 
@@ -196,6 +203,10 @@ pub fn end_focus(
             "focus_complete",
         )
         .map_err(|e| e.to_string())?;
+
+        if let Some(lesson_id) = &entry.lesson_id {
+            repo::complete_lesson(&conn, lesson_id).map_err(|e| e.to_string())?;
+        }
     }
 
     let view = build_today_view(&conn)?;
@@ -380,6 +391,107 @@ pub fn delete_meal(db: State<DbState>, meal_id: String) -> Result<MealsView, Str
     build_meals_view(&conn)
 }
 
+// --------------------------------------------------------------- Müfredat --
+
+#[derive(Serialize)]
+pub struct CourseView {
+    pub id: String,
+    pub name: String,
+    pub pillar_id: String,
+    pub action_id: String,
+    pub color_token: String,
+    pub target_hours_week: f64,
+    pub done_lessons: i64,
+    pub total_lessons: i64,
+    pub due_lessons: Vec<crate::domain::models::Lesson>,
+}
+
+fn build_course_views(conn: &rusqlite::Connection) -> Result<Vec<CourseView>, String> {
+    let courses = repo::list_courses(conn).map_err(|e| e.to_string())?;
+    courses
+        .into_iter()
+        .map(|c| {
+            let (done, total) = repo::course_progress(conn, &c.id).map_err(|e| e.to_string())?;
+            let due = repo::lessons_due(conn, &c.id).map_err(|e| e.to_string())?;
+            Ok(CourseView {
+                id: c.id,
+                name: c.name,
+                pillar_id: c.pillar_id,
+                action_id: c.action_id,
+                color_token: c.color_token,
+                target_hours_week: c.target_hours_week,
+                done_lessons: done,
+                total_lessons: total,
+                due_lessons: due,
+            })
+        })
+        .collect()
+}
+
+#[tauri::command]
+pub fn get_curriculum(db: State<DbState>) -> Result<Vec<CourseView>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    build_course_views(&conn)
+}
+
+#[tauri::command]
+pub fn add_course(
+    db: State<DbState>,
+    name: String,
+    pillar_id: String,
+    target_hours_week: f64,
+) -> Result<Vec<CourseView>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    repo::add_course(&conn, &name, &pillar_id, target_hours_week).map_err(|e| e.to_string())?;
+    build_course_views(&conn)
+}
+
+#[tauri::command]
+pub fn add_lesson(
+    db: State<DbState>,
+    course_id: String,
+    title: String,
+    planned_on: String,
+) -> Result<Vec<CourseView>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    repo::add_lesson(&conn, &course_id, &title, &planned_on).map_err(|e| e.to_string())?;
+    build_course_views(&conn)
+}
+
+/// Standalone completion (not via a Focus Session) — still earns a small
+/// flat bonus so marking a lesson done isn't free, and still schedules the
+/// next spaced-repetition review exactly like the Focus-Session path.
+#[tauri::command]
+pub fn complete_lesson(
+    app: tauri::AppHandle,
+    db: State<DbState>,
+    lesson_id: String,
+) -> Result<Vec<CourseView>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let lesson = repo::get_lesson(&conn, &lesson_id).map_err(|e| e.to_string())?;
+    let course = repo::get_course(&conn, &lesson.course_id).map_err(|e| e.to_string())?;
+    repo::complete_lesson(&conn, &lesson_id).map_err(|e| e.to_string())?;
+    repo::insert_ledger(
+        &conn,
+        &course.pillar_id,
+        None,
+        None,
+        ethos::lesson_points(),
+        "lesson_complete",
+    )
+    .map_err(|e| e.to_string())?;
+    let views = build_course_views(&conn)?;
+    let _ = app.emit("entry-logged", &lesson_id);
+    Ok(views)
+}
+
+#[tauri::command]
+pub fn skip_lesson(db: State<DbState>, lesson_id: String) -> Result<Vec<CourseView>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    repo::skip_lesson(&conn, &lesson_id).map_err(|e| e.to_string())?;
+    build_course_views(&conn)
+}
+
 // ------------------------------------------------------------------ Tasks --
 
 #[tauri::command]
@@ -555,6 +667,13 @@ pub struct Milestone {
 }
 
 #[derive(Serialize)]
+pub struct CourseBand {
+    pub name: String,
+    pub color_token: String,
+    pub ratio: f64, // done / total, 0 when no lessons yet
+}
+
+#[derive(Serialize)]
 pub struct QuietModeView {
     pub honored_today: i64,
     pub due_today: i64,
@@ -566,6 +685,7 @@ pub struct QuietModeView {
     pub milestones: Vec<Milestone>,
     pub kcal_today: f64,
     pub kcal_budget: f64,
+    pub course_bands: Vec<CourseBand>,
 }
 
 /// Inner Weather is a manual, non-judgmental self-report — never inferred
@@ -656,6 +776,21 @@ pub fn get_quiet_mode(db: State<DbState>) -> Result<QuietModeView, String> {
         .and_then(|s| s.parse::<f64>().ok())
         .unwrap_or(DEFAULT_KCAL_BUDGET);
 
+    let courses = repo::list_courses(&conn).map_err(|e| e.to_string())?;
+    let course_bands: Vec<CourseBand> = courses
+        .iter()
+        .take(4)
+        .map(|c| {
+            let (done, total) = repo::course_progress(&conn, &c.id).unwrap_or((0, 0));
+            let ratio = if total > 0 { done as f64 / total as f64 } else { 0.0 };
+            CourseBand {
+                name: c.name.clone(),
+                color_token: c.color_token.clone(),
+                ratio,
+            }
+        })
+        .collect();
+
     Ok(QuietModeView {
         honored_today,
         due_today,
@@ -667,6 +802,7 @@ pub fn get_quiet_mode(db: State<DbState>) -> Result<QuietModeView, String> {
         milestones,
         kcal_today,
         kcal_budget,
+        course_bands,
     })
 }
 

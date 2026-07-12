@@ -70,6 +70,7 @@
       view.kcal_budget > 0
         ? { ratio: view.kcal_today / view.kcal_budget, overBudget: view.kcal_today > view.kcal_budget }
         : undefined,
+      view.course_bands.map((b) => ({ ratio: b.ratio })),
     );
     canvasEl.style.filter = filter;
   }
@@ -208,6 +209,16 @@
                 style={`--c:${m.color_token}`}
                 title={m.title}
               ></span>
+            {/each}
+          </div>
+        {/if}
+        {#if view.course_bands.length > 0}
+          <div class="qm-milestones">
+            <span class="qm-path-label">Field rows</span>
+            {#each view.course_bands as band}
+              <span class="qm-course-chip" style={`--c:${band.color_token}`}
+                >{band.name} {Math.round(band.ratio * 100)}%</span
+              >
             {/each}
           </div>
         {/if}
@@ -459,6 +470,13 @@
   .qm-milestone.qm-overdue {
     outline: 1.5px dashed #f4f0e6;
     outline-offset: 2px;
+  }
+
+  .qm-course-chip {
+    font-size: 10.5px;
+    color: #c3bfce;
+    border-left: 2px solid var(--c);
+    padding-left: 6px;
   }
 
   .qm-stats {

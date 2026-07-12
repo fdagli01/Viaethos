@@ -556,6 +556,10 @@ function paintCrows(
   ctx.globalAlpha = 1;
 }
 
+export interface CourseBand {
+  ratio: number; // done / total lessons, 0..1
+}
+
 function paintWheatField(
   ctx: CanvasRenderingContext2D,
   W: number,
@@ -564,6 +568,7 @@ function paintWheatField(
   dk: number,
   wx: WeatherConfig,
   seedBase: number,
+  courseBands?: CourseBand[],
 ) {
   const r = rng(seedBase + 61);
   const dim = (c: string) => mix(c, '#0e1020', Math.min(dk * 0.9, 0.75));
@@ -574,22 +579,26 @@ function paintWheatField(
   const cell = 16 / Math.sqrt(wx.dense);
   const cols = Math.ceil(W / cell) + 1;
   const rows = Math.ceil((H - wheatTop) / cell) + 1;
+  const bands = courseBands && courseBands.length > 0 ? courseBands : null;
   for (let gy = 0; gy < rows; gy++) {
     for (let gx = 0; gx < cols; gx++) {
       const x = gx * cell + (r() - 0.5) * cell * 1.5;
       const y = wheatTop + gy * cell + (r() - 0.5) * cell * 1.5;
       const depth = Math.max(0, Math.min(1, (y - wheatTop) / (H - wheatTop)));
-      const len = 12 + depth * 22 + r() * 10;
+      // A studied course's row combs fuller and more golden — "planted".
+      const bandRatio = bands ? bands[Math.min(Math.floor((x / W) * bands.length), bands.length - 1)].ratio : 0;
+      const len = 12 + depth * 22 + bandRatio * 8 + r() * 10;
       const ang = -0.35 + (r() - 0.5) * (0.3 + wx.amp * 0.5) - depth * 0.15;
       const pick = r();
+      const goldThreshold = 0.82 - bandRatio * 0.35;
       const col =
         pick > 0.9
           ? accent[Math.floor(r() * accent.length)]
-          : pick > 0.82
+          : pick > goldThreshold
             ? tufts[Math.floor(r() * tufts.length)]
             : gold[Math.floor(r() * gold.length)];
       ctx.strokeStyle = dim(col);
-      ctx.lineWidth = (2 + depth * 3.5 + r() * 2) * wx.thick;
+      ctx.lineWidth = (2 + depth * 3.5 + bandRatio * 1.5 + r() * 2) * wx.thick;
       ctx.lineCap = 'round';
       ctx.globalAlpha = 0.5 + depth * 0.3 + r() * 0.2;
       ctx.beginPath();
@@ -681,6 +690,7 @@ export function renderPainting(
   weather: WeatherName,
   real?: RealWeatherInput,
   sofra?: { ratio: number; overBudget: boolean },
+  courseBands?: CourseBand[],
 ): string {
   const [top, mid, hor] = skyAt(h);
   const wx = WEATHER[weather];
@@ -732,7 +742,7 @@ export function renderPainting(
     paintSmoke(ctx, chimney, sofra.ratio, sofra.overBudget, 500);
   }
   paintMeadow(ctx, W, horizonY, dk, groundWx, 500);
-  paintWheatField(ctx, W, H, horizonY, dk, groundWx, 500);
+  paintWheatField(ctx, W, H, horizonY, dk, groundWx, 500, courseBands);
   paintPath(ctx, W, H, horizonY, dk, groundWx, 500);
   paintTree(ctx, W, horizonY, dk, wx, 500);
 

@@ -4,7 +4,9 @@ use chrono::{Datelike, Duration, Local, NaiveDate};
 use rusqlite::{params, Connection, OptionalExtension, Result};
 use uuid::Uuid;
 
-use crate::domain::models::{Action, ActionKind, Entry, FoodItem, Meal, Pillar, Schedule, Task};
+use crate::domain::models::{
+    Action, ActionKind, Course, Entry, FoodItem, Lesson, Meal, Pillar, Schedule, Task,
+};
 
 pub fn today() -> NaiveDate {
     Local::now().date_naive()
@@ -207,7 +209,7 @@ pub fn completed_counts_since(
 pub fn active_focus_entry(conn: &Connection, action_id: &str) -> Result<Option<Entry>> {
     conn.query_row(
         "SELECT id, action_id, kind, occurred_on, intention, planned_minutes,
-                started_at, ended_at, outcome, reflection, created_at
+                started_at, ended_at, outcome, reflection, lesson_id, created_at
          FROM entries
          WHERE action_id = ?1 AND kind = 'focus' AND ended_at IS NULL
          ORDER BY created_at DESC LIMIT 1",
@@ -230,14 +232,15 @@ fn row_to_entry(r: &rusqlite::Row) -> rusqlite::Result<Entry> {
         ended_at: r.get(7)?,
         outcome: r.get(8)?,
         reflection: r.get(9)?,
-        created_at: r.get(10)?,
+        lesson_id: r.get(10)?,
+        created_at: r.get(11)?,
     })
 }
 
 pub fn get_entry(conn: &Connection, entry_id: &str) -> Result<Entry> {
     conn.query_row(
         "SELECT id, action_id, kind, occurred_on, intention, planned_minutes,
-                started_at, ended_at, outcome, reflection, created_at
+                started_at, ended_at, outcome, reflection, lesson_id, created_at
          FROM entries WHERE id = ?1",
         params![entry_id],
         row_to_entry,
@@ -250,8 +253,8 @@ pub fn insert_tick(conn: &Connection, action_id: &str) -> Result<String> {
     conn.execute(
         "INSERT INTO entries
             (id, action_id, kind, occurred_on, intention, planned_minutes,
-             started_at, ended_at, outcome, reflection, created_at)
-         VALUES (?1, ?2, 'tick', ?3, NULL, NULL, ?4, ?4, 'completed', NULL, ?4)",
+             started_at, ended_at, outcome, reflection, lesson_id, created_at)
+         VALUES (?1, ?2, 'tick', ?3, NULL, NULL, ?4, ?4, 'completed', NULL, NULL, ?4)",
         params![id, action_id, today().to_string(), now],
     )?;
     Ok(id)
@@ -262,15 +265,16 @@ pub fn start_focus(
     action_id: &str,
     intention: Option<&str>,
     planned_minutes: i64,
+    lesson_id: Option<&str>,
 ) -> Result<String> {
     let id = Uuid::new_v4().to_string();
     let now = now_ts();
     conn.execute(
         "INSERT INTO entries
             (id, action_id, kind, occurred_on, intention, planned_minutes,
-             started_at, ended_at, outcome, reflection, created_at)
-         VALUES (?1, ?2, 'focus', ?3, ?4, ?5, ?6, NULL, NULL, NULL, ?6)",
-        params![id, action_id, today().to_string(), intention, planned_minutes, now],
+             started_at, ended_at, outcome, reflection, lesson_id, created_at)
+         VALUES (?1, ?2, 'focus', ?3, ?4, ?5, ?6, NULL, NULL, NULL, ?7, ?6)",
+        params![id, action_id, today().to_string(), intention, planned_minutes, now, lesson_id],
     )?;
     Ok(id)
 }
@@ -403,6 +407,193 @@ pub fn kcal_today(conn: &Connection) -> Result<f64> {
         params![today().to_string()],
         |r| r.get(0),
     )
+}
+
+// ------------------------------------------------------------- Müfredat --
+
+fn row_to_course(r: &rusqlite::Row) -> rusqlite::Result<Course> {
+    Ok(Course {
+        id: r.get(0)?,
+        name: r.get(1)?,
+        pillar_id: r.get(2)?,
+        action_id: r.get(3)?,
+        color_token: r.get(4)?,
+        target_hours_week: r.get(5)?,
+    })
+}
+
+pub fn list_courses(conn: &Connection) -> Result<Vec<Course>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, name, pillar_id, action_id, color_token, target_hours_week
+         FROM courses WHERE archived_at IS NULL ORDER BY created_at",
+    )?;
+    let rows = stmt.query_map([], row_to_course)?;
+    rows.collect()
+}
+
+pub fn get_course(conn: &Connection, course_id: &str) -> Result<Course> {
+    conn.query_row(
+        "SELECT id, name, pillar_id, action_id, color_token, target_hours_week
+         FROM courses WHERE id = ?1",
+        params![course_id],
+        row_to_course,
+    )
+}
+
+/// A course carries its own Focus action, so studying it flows through the
+/// exact same Ritual/Mosaic/streak machinery as any other Focus Session.
+pub fn add_course(
+    conn: &Connection,
+    name: &str,
+    pillar_id: &str,
+    target_hours_week: f64,
+) -> Result<String> {
+    let color_token: String = conn.query_row(
+        "SELECT color_token FROM pillars WHERE id = ?1",
+        params![pillar_id],
+        |r| r.get(0),
+    )?;
+    let action_id = Uuid::new_v4().to_string();
+    let now = now_ts();
+    conn.execute(
+        "INSERT INTO actions
+            (id, pillar_id, name, kind, default_minutes, schedule, target_per_day, sort_order, created_at, archived_at)
+         VALUES (?1, ?2, ?3, 'focus', 30, ?4, 1, 0, ?5, NULL)",
+        params![action_id, pillar_id, format!("Study: {name}"), Schedule::Daily.to_json(), now],
+    )?;
+    let course_id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO courses (id, name, pillar_id, action_id, color_token, target_hours_week, created_at, archived_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, NULL)",
+        params![course_id, name, pillar_id, action_id, color_token, target_hours_week, now],
+    )?;
+    Ok(course_id)
+}
+
+fn row_to_lesson(r: &rusqlite::Row) -> rusqlite::Result<Lesson> {
+    Ok(Lesson {
+        id: r.get(0)?,
+        course_id: r.get(1)?,
+        title: r.get(2)?,
+        planned_on: r.get(3)?,
+        status: r.get(4)?,
+        review_of: r.get(5)?,
+        created_at: r.get(6)?,
+    })
+}
+
+pub fn add_lesson(conn: &Connection, course_id: &str, title: &str, planned_on: &str) -> Result<String> {
+    let id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO lessons (id, course_id, title, planned_on, status, review_of, created_at)
+         VALUES (?1, ?2, ?3, ?4, 'planned', NULL, ?5)",
+        params![id, course_id, title, planned_on, now_ts()],
+    )?;
+    Ok(id)
+}
+
+/// Lessons due today or overdue (still planned) for one course.
+pub fn lessons_due(conn: &Connection, course_id: &str) -> Result<Vec<Lesson>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, course_id, title, planned_on, status, review_of, created_at
+         FROM lessons WHERE course_id = ?1 AND status = 'planned' AND planned_on <= ?2
+         ORDER BY planned_on",
+    )?;
+    let rows = stmt.query_map(params![course_id, today().to_string()], row_to_lesson)?;
+    rows.collect()
+}
+
+pub fn get_lesson(conn: &Connection, lesson_id: &str) -> Result<Lesson> {
+    conn.query_row(
+        "SELECT id, course_id, title, planned_on, status, review_of, created_at
+         FROM lessons WHERE id = ?1",
+        params![lesson_id],
+        row_to_lesson,
+    )
+}
+
+/// (done, total) lesson counts for one course — the field row's fill level.
+pub fn course_progress(conn: &Connection, course_id: &str) -> Result<(i64, i64)> {
+    let total: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM lessons WHERE course_id = ?1",
+        params![course_id],
+        |r| r.get(0),
+    )?;
+    let done: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM lessons WHERE course_id = ?1 AND status = 'done'",
+        params![course_id],
+        |r| r.get(0),
+    )?;
+    Ok((done, total))
+}
+
+/// How many prior reviews already precede this lesson in its review_of chain
+/// — 0 for an original topic, 1 for its first review, and so on.
+fn review_depth(conn: &Connection, lesson_id: &str) -> Result<u32> {
+    let mut depth = 0u32;
+    let mut current = lesson_id.to_string();
+    loop {
+        let parent: Option<String> = conn
+            .query_row(
+                "SELECT review_of FROM lessons WHERE id = ?1",
+                params![current],
+                |r| r.get(0),
+            )
+            .optional()?
+            .flatten();
+        match parent {
+            Some(p) => {
+                depth += 1;
+                current = p;
+                if depth > 20 {
+                    break; // safety bound
+                }
+            }
+            None => break,
+        }
+    }
+    Ok(depth)
+}
+
+const SPACED_REPETITION_INTERVALS_DAYS: [i64; 5] = [1, 3, 7, 16, 35];
+
+/// Marks a lesson done and schedules its next spaced-repetition review.
+/// Returns the newly scheduled review lesson's id.
+pub fn complete_lesson(conn: &Connection, lesson_id: &str) -> Result<String> {
+    conn.execute(
+        "UPDATE lessons SET status = 'done' WHERE id = ?1",
+        params![lesson_id],
+    )?;
+    let lesson = get_lesson(conn, lesson_id)?;
+    let depth = review_depth(conn, lesson_id)?;
+    let interval = SPACED_REPETITION_INTERVALS_DAYS
+        [(depth as usize).min(SPACED_REPETITION_INTERVALS_DAYS.len() - 1)];
+    let next_on = today() + Duration::days(interval);
+    add_lesson_review(conn, &lesson.course_id, &lesson.title, &next_on.to_string(), lesson_id)
+}
+
+fn add_lesson_review(
+    conn: &Connection,
+    course_id: &str,
+    title: &str,
+    planned_on: &str,
+    review_of: &str,
+) -> Result<String> {
+    let id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO lessons (id, course_id, title, planned_on, status, review_of, created_at)
+         VALUES (?1, ?2, ?3, ?4, 'planned', ?5, ?6)",
+        params![id, course_id, title, planned_on, review_of, now_ts()],
+    )?;
+    Ok(id)
+}
+
+pub fn skip_lesson(conn: &Connection, lesson_id: &str) -> Result<()> {
+    conn.execute(
+        "UPDATE lessons SET status = 'skipped' WHERE id = ?1",
+        params![lesson_id],
+    )?;
+    Ok(())
 }
 
 // ----------------------------------------------------------------- tasks --

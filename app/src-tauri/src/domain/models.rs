@@ -87,6 +87,28 @@ pub struct Entry {
     pub ended_at: Option<i64>,
     pub outcome: Option<String>,
     pub reflection: Option<String>,
+    pub lesson_id: Option<String>,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Course {
+    pub id: String,
+    pub name: String,
+    pub pillar_id: String,
+    pub action_id: String,
+    pub color_token: String,
+    pub target_hours_week: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Lesson {
+    pub id: String,
+    pub course_id: String,
+    pub title: String,
+    pub planned_on: String,
+    pub status: String,
+    pub review_of: Option<String>,
     pub created_at: i64,
 }
 

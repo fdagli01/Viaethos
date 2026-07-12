@@ -2,12 +2,22 @@
   import type { ActionView } from '../api/types';
   import { api } from '../api/commands';
 
-  let { action, onClose }: { action: ActionView; onClose: () => void } = $props();
+  let {
+    action,
+    onClose,
+    lessonId = null,
+    lessonTitle = null,
+  }: {
+    action: ActionView;
+    onClose: () => void;
+    lessonId?: string | null;
+    lessonTitle?: string | null;
+  } = $props();
 
   type Phase = 'intend' | 'active' | 'seal';
 
   let phase = $state<Phase>(action.active_session ? 'active' : 'intend');
-  let intention = $state(action.active_session?.intention ?? '');
+  let intention = $state(action.active_session?.intention ?? lessonTitle ?? '');
   let minutes = $state(action.active_session?.planned_minutes ?? action.default_minutes ?? 25);
   let entryId = $state(action.active_session?.entry_id ?? '');
   let startedAt = $state(action.active_session?.started_at ?? 0);
@@ -35,7 +45,7 @@
   }
 
   async function begin() {
-    const view = await api.startFocus(action.id, intention.trim() || null, minutes);
+    const view = await api.startFocus(action.id, intention.trim() || null, minutes, lessonId);
     const pillar = view.pillars.find((p) => p.id === action.pillar_id);
     const updated = pillar?.actions.find((a) => a.id === action.id);
     if (updated?.active_session) {

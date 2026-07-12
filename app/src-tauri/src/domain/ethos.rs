@@ -5,6 +5,7 @@
 const TICK_POINTS: i64 = 5;
 const TASK_POINTS: i64 = 3;
 const MEAL_POINTS: i64 = 2;
+const LESSON_POINTS: i64 = 4;
 const FOCUS_POINTS_PER_MINUTE: i64 = 1;
 const INTENTION_SEALED_BONUS: i64 = 5;
 const STREAK_CAP_DAYS: i64 = 30;
@@ -35,6 +36,13 @@ pub fn task_points() -> i64 {
 /// rewards the act of recording, not any judgment about what was eaten.
 pub fn meal_points() -> i64 {
     MEAL_POINTS
+}
+
+/// Points for marking a lesson done outside of a Focus Session. When a
+/// lesson is completed by ending a Focus Session instead, `focus_points`
+/// already covers it — this exists so standalone completion isn't free.
+pub fn lesson_points() -> i64 {
+    LESSON_POINTS
 }
 
 /// Points for a completed Focus Session, given elapsed minutes and streak.

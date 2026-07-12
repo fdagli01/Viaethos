@@ -45,6 +45,11 @@ pub fn run() {
             commands::get_meals_today,
             commands::add_meal,
             commands::delete_meal,
+            commands::get_curriculum,
+            commands::add_course,
+            commands::add_lesson,
+            commands::complete_lesson,
+            commands::skip_lesson,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

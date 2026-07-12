@@ -103,6 +103,28 @@ export interface MealsView {
   kcal_budget: number;
 }
 
+export interface Lesson {
+  id: string;
+  course_id: string;
+  title: string;
+  planned_on: string;
+  status: 'planned' | 'done' | 'skipped';
+  review_of: string | null;
+  created_at: number;
+}
+
+export interface CourseView {
+  id: string;
+  name: string;
+  pillar_id: string;
+  action_id: string;
+  color_token: string;
+  target_hours_week: number;
+  done_lessons: number;
+  total_lessons: number;
+  due_lessons: Lesson[];
+}
+
 export interface WeatherSnapshot {
   fetched_at: number;
   temperature_c: number;
@@ -130,4 +152,5 @@ export interface QuietModeView {
   milestones: Milestone[];
   kcal_today: number;
   kcal_budget: number;
+  course_bands: { name: string; color_token: string; ratio: number }[];
 }

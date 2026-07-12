@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import type {
+  CourseView,
   FoodItem,
   LedgerStats,
   MealsView,
@@ -13,8 +14,12 @@ import type {
 export const api = {
   getToday: () => invoke<TodayView>('get_today'),
   completeTick: (actionId: string) => invoke<TodayView>('complete_tick', { actionId }),
-  startFocus: (actionId: string, intention: string | null, plannedMinutes: number) =>
-    invoke<TodayView>('start_focus', { actionId, intention, plannedMinutes }),
+  startFocus: (
+    actionId: string,
+    intention: string | null,
+    plannedMinutes: number,
+    lessonId: string | null = null,
+  ) => invoke<TodayView>('start_focus', { actionId, intention, plannedMinutes, lessonId }),
   endFocus: (entryId: string, outcome: 'completed' | 'abandoned' | 'interrupted', reflection: string | null) =>
     invoke<TodayView>('end_focus', { entryId, outcome, reflection }),
   getLedgerStats: () => invoke<LedgerStats>('get_ledger_stats'),
@@ -53,4 +58,11 @@ export const api = {
     note: string | null,
   ) => invoke<MealsView>('add_meal', { timeSlot, name, kcal, proteinG, carbG, fatG, note }),
   deleteMeal: (mealId: string) => invoke<MealsView>('delete_meal', { mealId }),
+  getCurriculum: () => invoke<CourseView[]>('get_curriculum'),
+  addCourse: (name: string, pillarId: string, targetHoursWeek: number) =>
+    invoke<CourseView[]>('add_course', { name, pillarId, targetHoursWeek }),
+  addLesson: (courseId: string, title: string, plannedOn: string) =>
+    invoke<CourseView[]>('add_lesson', { courseId, title, plannedOn }),
+  completeLesson: (lessonId: string) => invoke<CourseView[]>('complete_lesson', { lessonId }),
+  skipLesson: (lessonId: string) => invoke<CourseView[]>('skip_lesson', { lessonId }),
 };

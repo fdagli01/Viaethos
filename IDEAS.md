@@ -503,3 +503,39 @@ yansıdığını sqlite3 üzerinden teyit ettim.
 
 Sırada roadmap'e göre **v0.5: Müfredat** (ders planı + tarla sıraları +
 tekrar önerileri) var.
+
+## 20. v0.5: Müfredat — Tarladaki Sürülmüş Sıralar
+
+Roadmap'teki v0.5 tamamlandı. `courses` + `lessons` tabloları eklendi;
+`entries` tablosuna nullable `lesson_id` (bir Focus Session artık bir
+derse bağlanabiliyor). Kritik mimari karar: **her kurs kendi Focus
+action'ını otomatik oluşturuyor** (`add_course` bir `actions` satırı da
+yaratıp `courses.action_id`'ye bağlıyor) — böylece bir dersi çalışmak,
+zaten var olan Ritüel/Mozaik/streak makinesinden geçiyor, paralel bir
+UI paradigması gerekmiyor. "Study" butonu aynı `RitualModal`'ı açıyor,
+sadece `lesson_id` taşıyor.
+
+Aralıklı tekrar (spaced repetition): bir ders tamamlanınca (`complete_lesson`),
+`review_of` zincirinde kaç önceki tekrar olduğu sayılıyor (derinlik) ve
+`[1, 3, 7, 16, 35]` gün aralık tablosundan yeni bir tekrar dersi otomatik
+planlanıyor. Bir dersi doğrudan Focus Session bitirerek tamamlamak
+(`end_focus` içinde `lesson_id` varsa) puanları zaten `focus_points`
+üzerinden alıyor; bağımsız "Mark done" butonuyla tamamlamaksa küçük sabit
+bir bonus (+4) veriyor — boşuna tamamlanmasın diye.
+
+Today ekranında **Müfredat** bölümü: kurs ekle, her kursun altında
+bugün/gecikmiş konular, Study/Mark done/Skip butonları, konu ekleme formu.
+
+Quiet Mode'da buğday tarlası artık kursların "sürülmüş sıraları" —
+`paintWheatField` her kursun ilerleme oranına (`done/total`) göre yatay
+bir dilimi daha altın rengi ve daha yoğun tarıyor ("ekilmiş" görünüm);
+işlenmemiş kısımlar daha yeşil/tüy kalıyor. Altta okunabilirlik için
+kurs adı + yüzde etiketleri de var (renk tek başına anlam taşımasın diye).
+
+Doğrulama: `cargo check`/`npm build+check` temiz; yeni şemayla derlenen
+ikili Xvfb altında çöküşsüz çalıştı; aralıklı tekrar algoritmasını
+Python üzerinden birebir aynı SQL/mantıkla üç adım simüle ederek
+doğruladım — derinlik 0→1 gün, derinlik 1→3 gün, derinlik 2→7 gün,
+tam beklenen sırayla.
+
+Roadmap'in geri kalanı: **v0.6 — Uyku + istatistik + Memento Mori**.

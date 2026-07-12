@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS entries (
   ended_at        INTEGER,
   outcome         TEXT CHECK (outcome IN ('completed', 'abandoned', 'interrupted')),
   reflection      TEXT,
+  lesson_id       TEXT REFERENCES lessons(id),  -- set when this Focus Session studies a lesson
   created_at      INTEGER NOT NULL
 );
 
@@ -100,3 +101,30 @@ CREATE TABLE IF NOT EXISTS meals (
 );
 
 CREATE INDEX IF NOT EXISTS idx_meals_day ON meals(occurred_on);
+
+-- Müfredat: a course is a plowed field row; each lesson studied is a
+-- planted strip. A course carries its own linked Focus action so studying
+-- flows through the exact same Ritual/Mosaic/streak machinery as any other
+-- Focus Session — no parallel UI paradigm needed.
+CREATE TABLE IF NOT EXISTS courses (
+  id                TEXT PRIMARY KEY,
+  name              TEXT NOT NULL,
+  pillar_id         TEXT NOT NULL REFERENCES pillars(id),
+  action_id         TEXT NOT NULL REFERENCES actions(id),
+  color_token       TEXT NOT NULL,
+  target_hours_week REAL NOT NULL DEFAULT 3,
+  created_at        INTEGER NOT NULL,
+  archived_at       INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS lessons (
+  id         TEXT PRIMARY KEY,
+  course_id  TEXT NOT NULL REFERENCES courses(id),
+  title      TEXT NOT NULL,
+  planned_on TEXT NOT NULL,
+  status     TEXT NOT NULL DEFAULT 'planned' CHECK (status IN ('planned', 'done', 'skipped')),
+  review_of  TEXT REFERENCES lessons(id),  -- set on auto-generated spaced-repetition reviews
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_lessons_course ON lessons(course_id, planned_on);
