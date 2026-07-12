@@ -135,7 +135,7 @@ pub fn complete_tick(app: tauri::AppHandle, db: State<DbState>, action_id: Strin
     repo::insert_ledger(
         &conn,
         &action.pillar_id,
-        &action_id,
+        Some(&action_id),
         Some(&entry_id),
         points,
         "tick_complete",
@@ -190,7 +190,7 @@ pub fn end_focus(
         repo::insert_ledger(
             &conn,
             &action.pillar_id,
-            &action.id,
+            Some(&action.id),
             Some(&entry_id),
             points,
             "focus_complete",
@@ -201,6 +201,60 @@ pub fn end_focus(
     let view = build_today_view(&conn)?;
     let _ = app.emit("entry-logged", &entry.action_id);
     Ok(view)
+}
+
+// ------------------------------------------------------------------ Tasks --
+
+#[tauri::command]
+pub fn get_tasks(db: State<DbState>) -> Result<Vec<crate::domain::models::Task>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    repo::list_open_tasks(&conn).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn add_task(
+    db: State<DbState>,
+    title: String,
+    pillar_id: Option<String>,
+    due_on: Option<String>,
+) -> Result<Vec<crate::domain::models::Task>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    repo::add_task(&conn, &title, pillar_id.as_deref(), due_on.as_deref())
+        .map_err(|e| e.to_string())?;
+    repo::list_open_tasks(&conn).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn complete_task(
+    app: tauri::AppHandle,
+    db: State<DbState>,
+    task_id: String,
+) -> Result<Vec<crate::domain::models::Task>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let task = repo::complete_task(&conn, &task_id).map_err(|e| e.to_string())?;
+    if let Some(pillar_id) = &task.pillar_id {
+        repo::insert_ledger(
+            &conn,
+            pillar_id,
+            None,
+            None,
+            ethos::task_points(),
+            "task_complete",
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    let _ = app.emit("entry-logged", &task_id);
+    repo::list_open_tasks(&conn).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn delete_task(
+    db: State<DbState>,
+    task_id: String,
+) -> Result<Vec<crate::domain::models::Task>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    repo::delete_task(&conn, &task_id).map_err(|e| e.to_string())?;
+    repo::list_open_tasks(&conn).map_err(|e| e.to_string())
 }
 
 // ------------------------------------------------------------- The Ledger --
@@ -317,6 +371,13 @@ pub struct PathDay {
 }
 
 #[derive(Serialize)]
+pub struct Milestone {
+    pub title: String,
+    pub color_token: String,
+    pub overdue: bool,
+}
+
+#[derive(Serialize)]
 pub struct QuietModeView {
     pub honored_today: i64,
     pub due_today: i64,
@@ -325,6 +386,7 @@ pub struct QuietModeView {
     pub best_streak: i64,
     pub inner_weather: String,
     pub path: Vec<PathDay>,
+    pub milestones: Vec<Milestone>,
 }
 
 /// Inner Weather is a manual, non-judgmental self-report — never inferred
@@ -387,6 +449,28 @@ pub fn get_quiet_mode(db: State<DbState>) -> Result<QuietModeView, String> {
         d += Duration::days(1);
     }
 
+    let open_tasks = repo::list_open_tasks(&conn).map_err(|e| e.to_string())?;
+    let today_str = today.to_string();
+    let milestones: Vec<Milestone> = open_tasks
+        .into_iter()
+        .filter(|t| t.due_on.as_deref().map(|d| d <= today_str.as_str()).unwrap_or(true))
+        .take(6)
+        .map(|t| {
+            let color_token = t
+                .pillar_id
+                .as_ref()
+                .and_then(|pid| pillars.iter().find(|p| &p.id == pid))
+                .map(|p| p.color_token.clone())
+                .unwrap_or_else(|| "#8d88a0".to_string());
+            let overdue = t.due_on.as_deref().map(|d| d < today_str.as_str()).unwrap_or(false);
+            Milestone {
+                title: t.title,
+                color_token,
+                overdue,
+            }
+        })
+        .collect();
+
     Ok(QuietModeView {
         honored_today,
         due_today,
@@ -395,6 +479,7 @@ pub fn get_quiet_mode(db: State<DbState>) -> Result<QuietModeView, String> {
         best_streak,
         inner_weather,
         path,
+        milestones,
     })
 }
 

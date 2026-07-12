@@ -153,6 +153,19 @@
             {/if}
           {/each}
         </div>
+        {#if view.milestones.length > 0}
+          <div class="qm-milestones">
+            <span class="qm-path-label">Milestones</span>
+            {#each view.milestones as m}
+              <span
+                class="qm-milestone"
+                class:qm-overdue={m.overdue}
+                style={`--c:${m.color_token}`}
+                title={m.title}
+              ></span>
+            {/each}
+          </div>
+        {/if}
         <div class="qm-stats">
           <div class="qm-stat">
             <div class="qm-v">{view.total_points.toLocaleString()}</div>
@@ -372,6 +385,23 @@
   }
   .qm-stone.qm-today {
     outline: 1.5px solid #c3bfce;
+    outline-offset: 2px;
+  }
+
+  .qm-milestones {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .qm-milestone {
+    width: 9px;
+    height: 9px;
+    background: var(--c);
+    transform: rotate(45deg);
+    box-shadow: 0 0 6px var(--c);
+  }
+  .qm-milestone.qm-overdue {
+    outline: 1.5px dashed #f4f0e6;
     outline-offset: 2px;
   }
 

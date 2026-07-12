@@ -89,3 +89,14 @@ pub struct Entry {
     pub reflection: Option<String>,
     pub created_at: i64,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Task {
+    pub id: String,
+    pub pillar_id: Option<String>,
+    pub action_id: Option<String>,
+    pub title: String,
+    pub due_on: Option<String>,
+    pub completed_at: Option<i64>,
+    pub created_at: i64,
+}

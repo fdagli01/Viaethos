@@ -4,7 +4,7 @@ use chrono::{Datelike, Duration, Local, NaiveDate};
 use rusqlite::{params, Connection, OptionalExtension, Result};
 use uuid::Uuid;
 
-use crate::domain::models::{Action, ActionKind, Entry, Pillar, Schedule};
+use crate::domain::models::{Action, ActionKind, Entry, Pillar, Schedule, Task};
 
 pub fn today() -> NaiveDate {
     Local::now().date_naive()
@@ -244,7 +244,7 @@ pub fn end_focus(
 pub fn insert_ledger(
     conn: &Connection,
     pillar_id: &str,
-    action_id: &str,
+    action_id: Option<&str>,
     entry_id: Option<&str>,
     points: i64,
     reason: &str,
@@ -255,6 +255,69 @@ pub fn insert_ledger(
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
         params![id, pillar_id, action_id, entry_id, points, reason, now_ts()],
     )?;
+    Ok(())
+}
+
+// ----------------------------------------------------------------- tasks --
+
+fn row_to_task(r: &rusqlite::Row) -> rusqlite::Result<Task> {
+    Ok(Task {
+        id: r.get(0)?,
+        pillar_id: r.get(1)?,
+        action_id: r.get(2)?,
+        title: r.get(3)?,
+        due_on: r.get(4)?,
+        completed_at: r.get(5)?,
+        created_at: r.get(6)?,
+    })
+}
+
+/// Open tasks (not completed), due today or overdue first, then undated,
+/// then future-dated — the order they should read on the Path.
+pub fn list_open_tasks(conn: &Connection) -> Result<Vec<Task>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, pillar_id, action_id, title, due_on, completed_at, created_at
+         FROM tasks WHERE completed_at IS NULL
+         ORDER BY CASE WHEN due_on IS NULL THEN 1 ELSE 0 END, due_on, created_at",
+    )?;
+    let rows = stmt.query_map([], row_to_task)?;
+    rows.collect()
+}
+
+pub fn add_task(
+    conn: &Connection,
+    title: &str,
+    pillar_id: Option<&str>,
+    due_on: Option<&str>,
+) -> Result<String> {
+    let id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO tasks (id, pillar_id, action_id, title, due_on, completed_at, created_at)
+         VALUES (?1, ?2, NULL, ?3, ?4, NULL, ?5)",
+        params![id, pillar_id, title, due_on, now_ts()],
+    )?;
+    Ok(id)
+}
+
+pub fn get_task(conn: &Connection, task_id: &str) -> Result<Task> {
+    conn.query_row(
+        "SELECT id, pillar_id, action_id, title, due_on, completed_at, created_at
+         FROM tasks WHERE id = ?1",
+        params![task_id],
+        row_to_task,
+    )
+}
+
+pub fn complete_task(conn: &Connection, task_id: &str) -> Result<Task> {
+    conn.execute(
+        "UPDATE tasks SET completed_at = ?1 WHERE id = ?2",
+        params![now_ts(), task_id],
+    )?;
+    get_task(conn, task_id)
+}
+
+pub fn delete_task(conn: &Connection, task_id: &str) -> Result<()> {
+    conn.execute("DELETE FROM tasks WHERE id = ?1", params![task_id])?;
     Ok(())
 }
 

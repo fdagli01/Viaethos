@@ -3,6 +3,7 @@
 //! as a stored running total. Totals are a SUM() view over the ledger.
 
 const TICK_POINTS: i64 = 5;
+const TASK_POINTS: i64 = 3;
 const FOCUS_POINTS_PER_MINUTE: i64 = 1;
 const INTENTION_SEALED_BONUS: i64 = 5;
 const STREAK_CAP_DAYS: i64 = 30;
@@ -21,6 +22,12 @@ fn apply_multiplier(base: i64, multiplier: f64) -> i64 {
 /// Points for one Quick Tick completion, given the action's current streak.
 pub fn tick_points(streak_days: i64) -> i64 {
     apply_multiplier(TICK_POINTS, streak_multiplier(streak_days))
+}
+
+/// Points for completing a one-off task. Flat — tasks don't recur, so no
+/// streak concept applies.
+pub fn task_points() -> i64 {
+    TASK_POINTS
 }
 
 /// Points for a completed Focus Session, given elapsed minutes and streak.

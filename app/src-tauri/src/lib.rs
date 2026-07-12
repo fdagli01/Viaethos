@@ -34,6 +34,10 @@ pub fn run() {
             commands::get_ledger_stats,
             commands::get_quiet_mode,
             commands::set_inner_weather,
+            commands::get_tasks,
+            commands::add_task,
+            commands::complete_task,
+            commands::delete_task,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

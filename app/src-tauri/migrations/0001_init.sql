@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS tasks (
 CREATE TABLE IF NOT EXISTS ethos_ledger (
   id         TEXT PRIMARY KEY,
   pillar_id  TEXT NOT NULL REFERENCES pillars(id),
-  action_id  TEXT NOT NULL REFERENCES actions(id),
+  action_id  TEXT REFERENCES actions(id),      -- NULL for non-action sources (tasks, meals, sleep...)
   entry_id   TEXT REFERENCES entries(id),
   points     INTEGER NOT NULL,
   reason     TEXT NOT NULL,

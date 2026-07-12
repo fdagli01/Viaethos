@@ -62,6 +62,22 @@ export interface PathDay {
   pillar_colors: string[];
 }
 
+export interface Task {
+  id: string;
+  pillar_id: string | null;
+  action_id: string | null;
+  title: string;
+  due_on: string | null;
+  completed_at: number | null;
+  created_at: number;
+}
+
+export interface Milestone {
+  title: string;
+  color_token: string;
+  overdue: boolean;
+}
+
 export interface QuietModeView {
   honored_today: number;
   due_today: number;
@@ -70,4 +86,5 @@ export interface QuietModeView {
   best_streak: number;
   inner_weather: 'clear' | 'radiant' | 'heavy' | 'stormy';
   path: PathDay[];
+  milestones: Milestone[];
 }

@@ -417,3 +417,30 @@ en az bir kez onurlandırıldığı — `pillar_mix_by_day`), toplam Ethos
 Puanı ve en iyi streak. "Day's Mosaic" (saatlik takvim şeridi) ve
 kişiselleştirilmiş özel programlar bilinçli olarak dışarıda bırakıldı —
 gerçek bir zamanlama/takvim veri modeli henüz yok, bu v2+ kapsamı.
+
+## 17. v0.2: To-Do — Yol Kenarındaki Kilometre Taşları
+
+Roadmap'teki v0.2 tamamlandı. `tasks` tablosu zaten v1 şemasındaydı,
+sadece komut katmanı + arayüz + tabloya sahne elemanı olarak yerleştirme
+eklendi:
+
+- **Backend**: `get_tasks`/`add_task`/`complete_task`/`delete_task`
+  komutları; bir task pillar'a bağlıysa tamamlanınca `ethos_ledger`'a
+  küçük sabit bir puan yazıyor (3 puan — habit değil tek seferlik olduğu
+  için streak çarpanı yok). Bunu mümkün kılmak için `ethos_ledger.action_id`
+  NOT NULL kısıtından çıkarıldı (meals/sleep gibi gelecekteki modüllerin de
+  bir "action" olmadan puan yazabilmesi için) — henüz hiçbir gerçek kullanıcı
+  verisi yokken yapılan bilinçli bir şema kararı, migration zinciri değil.
+- **Today ekranı**: pillar bölümlerinin altına "The Path Ahead" başlıklı
+  bir görev listesi eklendi — hızlı ekleme, opsiyonel pillar etiketi,
+  opsiyonel "today" tarihi, tek tıkla tamamlama.
+- **Quiet Mode**: bugün gereken/vadesi geçmiş açık görevler artık Yol
+  şeridinin yanında küçük baklava biçimli "kilometre taşları" olarak
+  görünüyor — pillar rengiyle boyalı, vadesi geçmişse kesikli bir dış
+  çizgiyle. Tam liste yerine ilk 6 tanesi gösteriliyor (patika dolup
+  taşmasın diye) — "Tablodaki Her Şey Canlı" ilkesiyle tutarlı: tablo
+  özet, tam liste (Today ekranındaki The Path Ahead) derinlik.
+
+Sıradaki adım roadmap'e göre v0.3: gerçek hava durumu (Open-Meteo) —
+tablonun gökyüzü artık dışarıdaki gerçek havayla senkron olacak, Inner
+Weather (fırça/ruh hali) katmanından bağımsız ikinci, gerçek bir katman.

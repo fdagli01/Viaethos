@@ -1,8 +1,11 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { today } from '../stores/today.svelte';
+  import { tasks } from '../stores/tasks.svelte';
   import type { ActionView } from '../api/types';
   import PillarSection from './PillarSection.svelte';
   import RitualModal from './RitualModal.svelte';
+  import TaskList from './TaskList.svelte';
 
   let ritualAction = $state<ActionView | null>(null);
 
@@ -13,6 +16,10 @@
   function closeRitual() {
     ritualAction = null;
   }
+
+  onMount(() => {
+    tasks.init();
+  });
 </script>
 
 <div class="view">
@@ -22,6 +29,7 @@
     {#each today.view.pillars as pillar (pillar.id)}
       <PillarSection {pillar} onEnterRitual={enterRitual} />
     {/each}
+    <TaskList />
   {/if}
 </div>
 
