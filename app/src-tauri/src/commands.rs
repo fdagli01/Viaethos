@@ -1109,3 +1109,113 @@ pub fn set_inner_weather(db: State<DbState>, weather: String) -> Result<(), Stri
     let today = repo::today(&conn);
     repo::set_setting(&conn, &inner_weather_key(today), &weather).map_err(|e| e.to_string())
 }
+
+// ------------------------------------------------------------------- Path --
+
+const STREAK_MILESTONE_THRESHOLDS: [i64; 3] = [7, 30, 100];
+const POINTS_MILESTONE_STEP: i64 = 1000;
+
+#[derive(Serialize)]
+pub struct PathMilestone {
+    pub date: String,
+    pub label: String,
+    pub kind: String, // "streak" | "points"
+}
+
+#[derive(Serialize)]
+pub struct PathHistoryView {
+    pub days: Vec<PathDay>,
+    pub milestones: Vec<PathMilestone>,
+}
+
+fn points_milestone_dates(
+    daily_points: &std::collections::BTreeMap<chrono::NaiveDate, i64>,
+    step: i64,
+) -> Vec<(chrono::NaiveDate, i64)> {
+    let mut hits = Vec::new();
+    let mut cumulative = 0i64;
+    let mut next = step;
+    for (date, points) in daily_points {
+        cumulative += points;
+        while cumulative >= next {
+            hits.push((*date, next));
+            next += step;
+        }
+    }
+    hits
+}
+
+/// The full, historical Path: every day back to `days` ago (or the true
+/// start of the ledger, whichever is later) as a pillar-mix stone, plus
+/// milestone markers — the first time any action's streak crossed 7/30/100
+/// days, and every 1,000-point cumulative crossing. Each milestone is a
+/// one-time life event: once recorded it's never re-fired, even if a streak
+/// later breaks and rebuilds.
+#[tauri::command]
+pub fn get_path_history(db: State<DbState>, days: i64) -> Result<PathHistoryView, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let today = repo::today(&conn);
+    let since = today - Duration::days((days - 1).max(0));
+
+    let pillars = repo::list_pillars(&conn).map_err(|e| e.to_string())?;
+    let mix_by_day = repo::pillar_mix_by_day(&conn, since).map_err(|e| e.to_string())?;
+    let mut path_days = Vec::new();
+    let mut d = since;
+    while d <= today {
+        let pillar_ids = mix_by_day.get(&d).cloned().unwrap_or_default();
+        let pillar_colors = pillars
+            .iter()
+            .filter(|p| pillar_ids.contains(&p.id))
+            .map(|p| p.color_token.clone())
+            .collect();
+        path_days.push(PathDay {
+            date: d.to_string(),
+            pillar_colors,
+        });
+        d += Duration::days(1);
+    }
+
+    let mut milestones = Vec::new();
+
+    let actions = repo::list_actions(&conn).map_err(|e| e.to_string())?;
+    let long_history_since = today - Duration::days(3650);
+    for action in &actions {
+        let counts = repo::completed_counts_since(&conn, &action.id, long_history_since)
+            .map_err(|e| e.to_string())?;
+        let hits = streak::streak_milestone_dates(
+            &action.schedule,
+            action.target_per_day,
+            &counts,
+            &STREAK_MILESTONE_THRESHOLDS,
+        );
+        for (date, n) in hits {
+            if date >= since && date <= today {
+                milestones.push(PathMilestone {
+                    date: date.to_string(),
+                    label: format!("{} · {n}-day streak", action.name),
+                    kind: "streak".to_string(),
+                });
+            }
+        }
+    }
+
+    if let Some(earliest) = repo::earliest_ledger_date(&conn).map_err(|e| e.to_string())? {
+        let daily_points = repo::points_by_day(&conn, earliest).map_err(|e| e.to_string())?;
+        for (date, n) in points_milestone_dates(&daily_points, POINTS_MILESTONE_STEP) {
+            if date >= since && date <= today {
+                milestones.push(PathMilestone {
+                    date: date.to_string(),
+                    label: format!("{n} Ethos Points"),
+                    kind: "points".to_string(),
+                });
+            }
+        }
+    }
+
+    milestones.sort_by(|a, b| a.date.cmp(&b.date));
+
+    Ok(PathHistoryView {
+        days: path_days,
+        milestones,
+    })
+}

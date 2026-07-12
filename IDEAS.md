@@ -611,3 +611,46 @@ henüz yok — Quiet Mode'daki 14 günlük mini şerit ve Ledger'daki 30 günlü
 puan trendi bunun yerini kısmen dolduruyor. Bir sonraki mantıklı adım
 muhtemelen budur, ya da artık kavramsal iskelet olgunlaştığı için gerçek
 kullanım/test/paketleme aşamasına geçmek.
+
+## 23. v0.8: Path — Tarihsel Görünüm
+
+ARCHITECTURE.md'nin orijinal görünüm listesi ("Today / Ritual / Path /
+Manage / Settings") artık tam anlamıyla gerçek: **Path**, 7. sekme,
+tarihsel/filtrelenebilir tam görünüm. Quiet Mode'daki 14 günlük mini
+şerit ve Ledger'daki 30 günlük puan trendi bunun yerini kısmen
+dolduruyordu; şimdi gerçek olan da var.
+
+`domain::streak::streak_milestone_dates` — `best_streak` ile aynı
+günlük yürüyüşü yapıyor ama en uzun koşuyu döndürmek yerine her eşiğin
+(7/30/100 gün) **ilk kez** aşıldığı tarihi kaydediyor — hayatta bir kez
+olan bir olay. Bir streak sonradan kırılıp yeniden kurulsa bile zaten
+aşılmış bir eşik tekrar tetiklenmiyor, sadece daha yüksek eşikler hâlâ
+ateşlenebiliyor. Puan kilometre taşları için benzer bir kümülatif-eşik
+mantığı: `ethos_ledger`'daki ilk kayıttan bugüne günlük puanlar
+toplanıyor, her 1.000 katını geçişte bir kayıt düşülüyor.
+
+`get_path_history(days)` komutu: pillar-mix günleri (Quiet Mode'daki
+aynı fonksiyon, ama istenen aralık kadar — 30/90/365 gün) + birleştirilmiş,
+tarihe göre sıralanmış kilometre taşları listesi.
+
+**Path** ekranı: 7'şer günlük sütunlardan oluşan yatay kaydırılabilir bir
+şerit (her taş bir gün, pillar rengine boyalı, karışıksa çapraz bölünmüş),
+kilometre taşı olan günler altın (streak) veya beyaz (puan) bir çerçeveyle
+işaretli. Üstte pillar bazlı bir filtre — bir pillar'a tıklayınca o
+pillar'ı içermeyen taşlar soluyor (renk tek başına ayrımı taşımasın diye
+zaten milestone'lar ayrıca bir tabloda tarih+etiket olarak da listeleniyor).
+
+Doğrulama: `cargo check`/`npm build+check` temiz; ikili Xvfb altında
+çöküşsüz çalıştı; streak-eşik-geçiş ve puan-eşik-geçiş algoritmaları
+Python'da birebir aynı mantıkla yeniden türetilip üç senaryoda (7 günlük
+tek seferlik tetikleme, boşluktan sonra 30'a ulaşamama, kümülatif puanın
+1000'i geçtiği günün doğru tespiti) doğrulandı.
+
+---
+
+Artık yedi ekran (Quiet Mode / Today / Path / The Ledger / Memento Mori /
+Manage / Settings) ile orijinal mimari vizyonun tamamı ("Today / Ritual /
+Path / Manage / Settings" + Quiet Mode + Memento Mori) gerçek. Konsept
+fazından uygulamaya geçiş burada doğal bir durak: paketleme (ikon seti,
+installer, ilk-çalıştırma deneyimi), gerçek kullanıcı testi, veya belirli
+bir modülü derinleştirmek sıradaki mantıklı yönler.

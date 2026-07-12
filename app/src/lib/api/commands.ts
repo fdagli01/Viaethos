@@ -7,6 +7,7 @@ import type {
   MealsView,
   MementoMoriView,
   Pillar,
+  PathHistoryView,
   QuietModeView,
   SettingsView,
   SleepLog,
@@ -117,4 +118,5 @@ export const api = {
     }),
   setActionArchived: (actionId: string, archived: boolean) =>
     invoke<ActionAdminView[]>('set_action_archived', { actionId, archived }),
+  getPathHistory: (days: number) => invoke<PathHistoryView>('get_path_history', { days }),
 };

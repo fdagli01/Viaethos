@@ -118,3 +118,45 @@ pub fn best_streak(
     }
     best
 }
+
+/// Walks the same day-by-day history as `best_streak`, but instead of the
+/// final longest run, records the date each threshold in `thresholds`
+/// (ascending) was first ever reached — a one-time life event. If a streak
+/// later breaks and rebuilds, a threshold already hit is never re-recorded;
+/// only strictly higher thresholds can still fire.
+pub fn streak_milestone_dates(
+    schedule: &Schedule,
+    target_per_day: i64,
+    completed_counts: &BTreeMap<NaiveDate, i64>,
+    thresholds: &[i64],
+) -> Vec<(NaiveDate, i64)> {
+    if completed_counts.is_empty() || thresholds.is_empty() {
+        return Vec::new();
+    }
+    let all_days: BTreeSet<NaiveDate> = completed_counts.keys().copied().collect();
+    let first = *all_days.iter().next().unwrap();
+    let last = *all_days.iter().last().unwrap();
+
+    let mut hits = Vec::new();
+    let mut running = 0i64;
+    let mut next = 0usize;
+    let mut day = first;
+    while day <= last && next < thresholds.len() {
+        let weekday = day.weekday().num_days_from_sunday();
+        let due = schedule.is_due_on_weekday(weekday);
+        let honored = completed_counts.get(&day).copied().unwrap_or(0) >= target_per_day;
+        if due {
+            if honored {
+                running += 1;
+                while next < thresholds.len() && running >= thresholds[next] {
+                    hits.push((day, thresholds[next]));
+                    next += 1;
+                }
+            } else {
+                running = 0;
+            }
+        }
+        day += Duration::days(1);
+    }
+    hits
+}

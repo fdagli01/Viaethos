@@ -140,6 +140,17 @@ export interface CourseView {
   due_lessons: Lesson[];
 }
 
+export interface PathMilestone {
+  date: string;
+  label: string;
+  kind: 'streak' | 'points';
+}
+
+export interface PathHistoryView {
+  days: PathDay[];
+  milestones: PathMilestone[];
+}
+
 export interface ActionAdminView {
   id: string;
   pillar_id: string;

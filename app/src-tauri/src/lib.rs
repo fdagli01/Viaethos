@@ -61,6 +61,7 @@ pub fn run() {
             commands::add_action,
             commands::update_action,
             commands::set_action_archived,
+            commands::get_path_history,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

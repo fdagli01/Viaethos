@@ -7,8 +7,10 @@
   import MementoMori from './lib/components/MementoMori.svelte';
   import Settings from './lib/components/Settings.svelte';
   import Manage from './lib/components/Manage.svelte';
+  import Path from './lib/components/Path.svelte';
 
-  let screen = $state<'quiet' | 'today' | 'ledger' | 'memento' | 'settings' | 'manage'>('quiet');
+  type Screen = 'quiet' | 'today' | 'path' | 'ledger' | 'memento' | 'settings' | 'manage';
+  let screen = $state<Screen>('quiet');
 
   onMount(() => {
     today.init();
@@ -23,6 +25,7 @@
         >Quiet Mode</button
       >
       <button class:active={screen === 'today'} onclick={() => (screen = 'today')}>Today</button>
+      <button class:active={screen === 'path'} onclick={() => (screen = 'path')}>Path</button>
       <button class:active={screen === 'ledger'} onclick={() => (screen = 'ledger')}
         >The Ledger</button
       >
@@ -41,6 +44,8 @@
     <div class="view qm-view"><QuietMode /></div>
   {:else if screen === 'today'}
     <Today />
+  {:else if screen === 'path'}
+    <Path />
   {:else if screen === 'ledger'}
     <Ledger />
   {:else if screen === 'memento'}

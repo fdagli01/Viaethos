@@ -882,6 +882,17 @@ pub fn total_points(conn: &Connection) -> Result<i64> {
     conn.query_row("SELECT COALESCE(SUM(points), 0) FROM ethos_ledger", [], |r| r.get(0))
 }
 
+/// The date of the very first ledger entry — the true start of the Path,
+/// rather than an arbitrary lookback window.
+pub fn earliest_ledger_date(conn: &Connection) -> Result<Option<NaiveDate>> {
+    let date_str: Option<String> = conn.query_row(
+        "SELECT date(MIN(created_at), 'unixepoch') FROM ethos_ledger",
+        [],
+        |r| r.get(0),
+    )?;
+    Ok(date_str.and_then(|s| NaiveDate::parse_from_str(&s, "%Y-%m-%d").ok()))
+}
+
 pub fn points_by_day(conn: &Connection, since: NaiveDate) -> Result<BTreeMap<NaiveDate, i64>> {
     let mut stmt = conn.prepare(
         "SELECT date(created_at, 'unixepoch') AS d, SUM(points)
