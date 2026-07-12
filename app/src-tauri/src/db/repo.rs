@@ -8,8 +8,19 @@ use crate::domain::models::{
     Action, ActionKind, Course, Entry, FoodItem, Lesson, Meal, Pillar, Schedule, SleepLog, Task,
 };
 
-pub fn today() -> NaiveDate {
-    Local::now().date_naive()
+/// "Today" honors the user's day-boundary setting (default midnight) — a
+/// night owl can set it to 04:00 so a 2am session still lands on
+/// yesterday's row rather than fracturing the day artificially.
+pub fn today(conn: &Connection) -> NaiveDate {
+    let boundary_hour: i64 = get_setting(conn, "day_boundary_hour")
+        .ok()
+        .flatten()
+        .and_then(|s| s.parse::<i64>().ok())
+        .unwrap_or(0);
+    if boundary_hour == 0 {
+        return Local::now().date_naive();
+    }
+    (Local::now() - Duration::hours(boundary_hour)).date_naive()
 }
 
 pub fn now_ts() -> i64 {
@@ -142,6 +153,14 @@ pub fn list_pillars(conn: &Connection) -> Result<Vec<Pillar>> {
     rows.collect()
 }
 
+pub fn update_pillar(conn: &Connection, pillar_id: &str, name: &str, color_token: &str) -> Result<()> {
+    conn.execute(
+        "UPDATE pillars SET name = ?1, color_token = ?2 WHERE id = ?3",
+        params![name, color_token, pillar_id],
+    )?;
+    Ok(())
+}
+
 // --------------------------------------------------------------- actions --
 
 fn row_to_action(r: &rusqlite::Row) -> rusqlite::Result<Action> {
@@ -175,6 +194,76 @@ pub fn get_action(conn: &Connection, action_id: &str) -> Result<Action> {
         params![action_id],
         row_to_action,
     )
+}
+
+/// All actions regardless of archived state, each paired with whether it's
+/// archived — Manage needs to show and un-archive retired actions.
+pub fn list_all_actions(conn: &Connection) -> Result<Vec<(Action, bool)>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, pillar_id, name, kind, default_minutes, schedule, target_per_day, sort_order, archived_at
+         FROM actions ORDER BY sort_order",
+    )?;
+    let rows = stmt.query_map([], |r| {
+        let action = row_to_action(r)?;
+        let archived_at: Option<i64> = r.get(8)?;
+        Ok((action, archived_at.is_some()))
+    })?;
+    rows.collect()
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn add_action(
+    conn: &Connection,
+    pillar_id: &str,
+    name: &str,
+    kind: ActionKind,
+    default_minutes: Option<i64>,
+    schedule: &Schedule,
+    target_per_day: i64,
+) -> Result<String> {
+    let id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO actions
+            (id, pillar_id, name, kind, default_minutes, schedule, target_per_day, sort_order, created_at, archived_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, ?8, NULL)",
+        params![
+            id,
+            pillar_id,
+            name,
+            kind.as_str(),
+            default_minutes,
+            schedule.to_json(),
+            target_per_day,
+            now_ts()
+        ],
+    )?;
+    Ok(id)
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn update_action(
+    conn: &Connection,
+    action_id: &str,
+    name: &str,
+    default_minutes: Option<i64>,
+    schedule: &Schedule,
+    target_per_day: i64,
+) -> Result<()> {
+    conn.execute(
+        "UPDATE actions SET name = ?1, default_minutes = ?2, schedule = ?3, target_per_day = ?4
+         WHERE id = ?5",
+        params![name, default_minutes, schedule.to_json(), target_per_day, action_id],
+    )?;
+    Ok(())
+}
+
+pub fn set_action_archived(conn: &Connection, action_id: &str, archived: bool) -> Result<()> {
+    let value = if archived { Some(now_ts()) } else { None };
+    conn.execute(
+        "UPDATE actions SET archived_at = ?1 WHERE id = ?2",
+        params![value, action_id],
+    )?;
+    Ok(())
 }
 
 // --------------------------------------------------------------- entries --
@@ -255,7 +344,7 @@ pub fn insert_tick(conn: &Connection, action_id: &str) -> Result<String> {
             (id, action_id, kind, occurred_on, intention, planned_minutes,
              started_at, ended_at, outcome, reflection, lesson_id, created_at)
          VALUES (?1, ?2, 'tick', ?3, NULL, NULL, ?4, ?4, 'completed', NULL, NULL, ?4)",
-        params![id, action_id, today().to_string(), now],
+        params![id, action_id, today(conn).to_string(), now],
     )?;
     Ok(id)
 }
@@ -274,7 +363,7 @@ pub fn start_focus(
             (id, action_id, kind, occurred_on, intention, planned_minutes,
              started_at, ended_at, outcome, reflection, lesson_id, created_at)
          VALUES (?1, ?2, 'focus', ?3, ?4, ?5, ?6, NULL, NULL, NULL, ?7, ?6)",
-        params![id, action_id, today().to_string(), intention, planned_minutes, now, lesson_id],
+        params![id, action_id, today(conn).to_string(), intention, planned_minutes, now, lesson_id],
     )?;
     Ok(id)
 }
@@ -391,7 +480,7 @@ pub fn add_meal(
     conn.execute(
         "INSERT INTO meals (id, occurred_on, time_slot, name, kcal, protein_g, carb_g, fat_g, note, created_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
-        params![id, today().to_string(), time_slot, name, kcal, protein_g, carb_g, fat_g, note, now_ts()],
+        params![id, today(conn).to_string(), time_slot, name, kcal, protein_g, carb_g, fat_g, note, now_ts()],
     )?;
     Ok(id)
 }
@@ -404,7 +493,7 @@ pub fn delete_meal(conn: &Connection, meal_id: &str) -> Result<()> {
 pub fn kcal_today(conn: &Connection) -> Result<f64> {
     conn.query_row(
         "SELECT COALESCE(SUM(kcal), 0) FROM meals WHERE occurred_on = ?1",
-        params![today().to_string()],
+        params![today(conn).to_string()],
         |r| r.get(0),
     )
 }
@@ -549,7 +638,7 @@ pub fn lessons_due(conn: &Connection, course_id: &str) -> Result<Vec<Lesson>> {
          FROM lessons WHERE course_id = ?1 AND status = 'planned' AND planned_on <= ?2
          ORDER BY planned_on",
     )?;
-    let rows = stmt.query_map(params![course_id, today().to_string()], row_to_lesson)?;
+    let rows = stmt.query_map(params![course_id, today(conn).to_string()], row_to_lesson)?;
     rows.collect()
 }
 
@@ -618,7 +707,7 @@ pub fn complete_lesson(conn: &Connection, lesson_id: &str) -> Result<String> {
     let depth = review_depth(conn, lesson_id)?;
     let interval = SPACED_REPETITION_INTERVALS_DAYS
         [(depth as usize).min(SPACED_REPETITION_INTERVALS_DAYS.len() - 1)];
-    let next_on = today() + Duration::days(interval);
+    let next_on = today(conn) + Duration::days(interval);
     add_lesson_review(conn, &lesson.course_id, &lesson.title, &next_on.to_string(), lesson_id)
 }
 

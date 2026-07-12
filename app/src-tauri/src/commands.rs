@@ -45,7 +45,7 @@ pub struct TodayView {
 fn build_today_view(conn: &rusqlite::Connection) -> Result<TodayView, String> {
     let pillars = repo::list_pillars(conn).map_err(|e| e.to_string())?;
     let actions = repo::list_actions(conn).map_err(|e| e.to_string())?;
-    let today = repo::today();
+    let today = repo::today(conn);
     let history_since = today - Duration::days(400);
 
     let mut pillar_views: Vec<PillarView> = pillars
@@ -123,7 +123,7 @@ pub fn get_today(db: State<DbState>) -> Result<TodayView, String> {
 pub fn complete_tick(app: tauri::AppHandle, db: State<DbState>, action_id: String) -> Result<TodayView, String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
     let action = repo::get_action(&conn, &action_id).map_err(|e| e.to_string())?;
-    let today = repo::today();
+    let today = repo::today(&conn);
     let history_since = today - Duration::days(400);
     let counts_before =
         repo::completed_counts_since(&conn, &action_id, history_since).map_err(|e| e.to_string())?;
@@ -185,7 +185,7 @@ pub fn end_focus(
         let ended = entry.ended_at.unwrap_or(started);
         let minutes = ((ended - started) / 60).max(0);
 
-        let today = repo::today();
+        let today = repo::today(&conn);
         let history_since = today - Duration::days(400);
         let counts = repo::completed_counts_since(&conn, &action.id, history_since)
             .map_err(|e| e.to_string())?;
@@ -290,7 +290,7 @@ pub struct MealsView {
 }
 
 fn build_meals_view(conn: &rusqlite::Connection) -> Result<MealsView, String> {
-    let meals = repo::list_meals_on(conn, repo::today()).map_err(|e| e.to_string())?;
+    let meals = repo::list_meals_on(conn, repo::today(conn)).map_err(|e| e.to_string())?;
     let kcal_total = repo::kcal_today(conn).map_err(|e| e.to_string())?;
     let kcal_budget = repo::get_setting(conn, "calorie_budget")
         .map_err(|e| e.to_string())?
@@ -391,6 +391,187 @@ pub fn delete_meal(db: State<DbState>, meal_id: String) -> Result<MealsView, Str
     build_meals_view(&conn)
 }
 
+// ----------------------------------------------------------------- Manage --
+
+#[tauri::command]
+pub fn update_pillar(
+    db: State<DbState>,
+    pillar_id: String,
+    name: String,
+    color_token: String,
+) -> Result<Vec<crate::domain::models::Pillar>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    repo::update_pillar(&conn, &pillar_id, &name, &color_token).map_err(|e| e.to_string())?;
+    repo::list_pillars(&conn).map_err(|e| e.to_string())
+}
+
+#[derive(Serialize)]
+pub struct ActionAdminView {
+    pub id: String,
+    pub pillar_id: String,
+    pub name: String,
+    pub kind: String,
+    pub default_minutes: Option<i64>,
+    pub schedule_type: String,
+    pub times_per_week: Option<u8>,
+    pub target_per_day: i64,
+    pub archived: bool,
+}
+
+fn schedule_to_admin(schedule: &crate::domain::models::Schedule) -> (String, Option<u8>) {
+    use crate::domain::models::Schedule;
+    match schedule {
+        Schedule::Daily => ("daily".to_string(), None),
+        Schedule::Weekdays => ("weekdays".to_string(), None),
+        Schedule::Days { .. } => ("daily".to_string(), None), // not editable in Manage v1
+        Schedule::TimesPerWeek { n } => ("times_per_week".to_string(), Some(*n)),
+    }
+}
+
+fn schedule_from_admin(schedule_type: &str, times_per_week: Option<u8>) -> crate::domain::models::Schedule {
+    use crate::domain::models::Schedule;
+    match schedule_type {
+        "weekdays" => Schedule::Weekdays,
+        "times_per_week" => Schedule::TimesPerWeek {
+            n: times_per_week.unwrap_or(3),
+        },
+        _ => Schedule::Daily,
+    }
+}
+
+fn build_action_admin_views(conn: &rusqlite::Connection) -> Result<Vec<ActionAdminView>, String> {
+    let actions = repo::list_all_actions(conn).map_err(|e| e.to_string())?;
+    Ok(actions
+        .into_iter()
+        .map(|(a, archived)| {
+            let (schedule_type, times_per_week) = schedule_to_admin(&a.schedule);
+            ActionAdminView {
+                id: a.id,
+                pillar_id: a.pillar_id,
+                name: a.name,
+                kind: a.kind.as_str().to_string(),
+                default_minutes: a.default_minutes,
+                schedule_type,
+                times_per_week,
+                target_per_day: a.target_per_day,
+                archived,
+            }
+        })
+        .collect())
+}
+
+#[tauri::command]
+pub fn get_manage_actions(db: State<DbState>) -> Result<Vec<ActionAdminView>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    build_action_admin_views(&conn)
+}
+
+#[tauri::command]
+pub fn add_action(
+    db: State<DbState>,
+    pillar_id: String,
+    name: String,
+    kind: String,
+    default_minutes: Option<i64>,
+    schedule_type: String,
+    times_per_week: Option<u8>,
+    target_per_day: i64,
+) -> Result<Vec<ActionAdminView>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let schedule = schedule_from_admin(&schedule_type, times_per_week);
+    repo::add_action(
+        &conn,
+        &pillar_id,
+        &name,
+        crate::domain::models::ActionKind::from_str(&kind),
+        default_minutes,
+        &schedule,
+        target_per_day,
+    )
+    .map_err(|e| e.to_string())?;
+    build_action_admin_views(&conn)
+}
+
+#[tauri::command]
+pub fn update_action(
+    db: State<DbState>,
+    action_id: String,
+    name: String,
+    default_minutes: Option<i64>,
+    schedule_type: String,
+    times_per_week: Option<u8>,
+    target_per_day: i64,
+) -> Result<Vec<ActionAdminView>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let schedule = schedule_from_admin(&schedule_type, times_per_week);
+    repo::update_action(&conn, &action_id, &name, default_minutes, &schedule, target_per_day)
+        .map_err(|e| e.to_string())?;
+    build_action_admin_views(&conn)
+}
+
+#[tauri::command]
+pub fn set_action_archived(
+    db: State<DbState>,
+    action_id: String,
+    archived: bool,
+) -> Result<Vec<ActionAdminView>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    repo::set_action_archived(&conn, &action_id, archived).map_err(|e| e.to_string())?;
+    build_action_admin_views(&conn)
+}
+
+// ---------------------------------------------------------------- Settings --
+
+#[derive(Serialize)]
+pub struct SettingsView {
+    pub day_boundary_hour: i64,
+    pub calorie_budget: f64,
+    pub weather_lat: f64,
+    pub weather_lon: f64,
+}
+
+fn build_settings_view(conn: &rusqlite::Connection) -> Result<SettingsView, String> {
+    let day_boundary_hour = repo::get_setting(conn, "day_boundary_hour")
+        .map_err(|e| e.to_string())?
+        .and_then(|s| s.parse::<i64>().ok())
+        .unwrap_or(0);
+    let calorie_budget = repo::get_setting(conn, "calorie_budget")
+        .map_err(|e| e.to_string())?
+        .and_then(|s| s.parse::<f64>().ok())
+        .unwrap_or(DEFAULT_KCAL_BUDGET);
+    let (weather_lat, weather_lon) = weather_location(conn);
+    Ok(SettingsView {
+        day_boundary_hour,
+        calorie_budget,
+        weather_lat,
+        weather_lon,
+    })
+}
+
+#[tauri::command]
+pub fn get_settings(db: State<DbState>) -> Result<SettingsView, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    build_settings_view(&conn)
+}
+
+#[tauri::command]
+pub fn update_settings(
+    db: State<DbState>,
+    day_boundary_hour: i64,
+    calorie_budget: f64,
+    weather_lat: f64,
+    weather_lon: f64,
+) -> Result<SettingsView, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    repo::set_setting(&conn, "day_boundary_hour", &day_boundary_hour.to_string())
+        .map_err(|e| e.to_string())?;
+    repo::set_setting(&conn, "calorie_budget", &calorie_budget.to_string())
+        .map_err(|e| e.to_string())?;
+    repo::set_setting(&conn, "weather_lat", &weather_lat.to_string()).map_err(|e| e.to_string())?;
+    repo::set_setting(&conn, "weather_lon", &weather_lon.to_string()).map_err(|e| e.to_string())?;
+    build_settings_view(&conn)
+}
+
 // -------------------------------------------------------------- Memento Mori --
 
 /// Not user-configurable in v0.6 — a single fixed horizon keeps the grid a
@@ -410,7 +591,7 @@ fn build_memento_mori_view(conn: &rusqlite::Connection) -> Result<MementoMoriVie
     let weeks_lived = birth_date
         .as_deref()
         .and_then(|s| chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").ok())
-        .map(|birth| (repo::today() - birth).num_days() / 7);
+        .map(|birth| (repo::today(conn) - birth).num_days() / 7);
     Ok(MementoMoriView {
         birth_date,
         weeks_lived,
@@ -438,7 +619,7 @@ pub fn get_last_sleep(
     db: State<DbState>,
 ) -> Result<Option<crate::domain::models::SleepLog>, String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
-    repo::get_sleep_on(&conn, repo::today()).map_err(|e| e.to_string())
+    repo::get_sleep_on(&conn, repo::today(&conn)).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -672,7 +853,7 @@ pub struct LedgerStats {
 #[tauri::command]
 pub fn get_ledger_stats(db: State<DbState>) -> Result<LedgerStats, String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
-    let today = repo::today();
+    let today = repo::today(&conn);
 
     let trend_since = today - Duration::days(29);
     let points_map = repo::points_by_day(&conn, trend_since).map_err(|e| e.to_string())?;
@@ -808,7 +989,7 @@ fn inner_weather_key(date: chrono::NaiveDate) -> String {
 pub fn get_quiet_mode(db: State<DbState>) -> Result<QuietModeView, String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
     let today_view = build_today_view(&conn)?;
-    let today = repo::today();
+    let today = repo::today(&conn);
 
     let due_today: i64 = today_view
         .pillars
@@ -925,6 +1106,6 @@ pub fn get_quiet_mode(db: State<DbState>) -> Result<QuietModeView, String> {
 #[tauri::command]
 pub fn set_inner_weather(db: State<DbState>, weather: String) -> Result<(), String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
-    let today = repo::today();
+    let today = repo::today(&conn);
     repo::set_setting(&conn, &inner_weather_key(today), &weather).map_err(|e| e.to_string())
 }

@@ -1,11 +1,14 @@
 import { invoke } from '@tauri-apps/api/core';
 import type {
+  ActionAdminView,
   CourseView,
   FoodItem,
   LedgerStats,
   MealsView,
   MementoMoriView,
+  Pillar,
   QuietModeView,
+  SettingsView,
   SleepLog,
   Task,
   TimeSlot,
@@ -72,4 +75,46 @@ export const api = {
     invoke<SleepLog>('log_sleep', { date, bedAt, wokeAt, quality }),
   getMementoMori: () => invoke<MementoMoriView>('get_memento_mori'),
   setBirthDate: (birthDate: string) => invoke<MementoMoriView>('set_birth_date', { birthDate }),
+  getSettings: () => invoke<SettingsView>('get_settings'),
+  updateSettings: (dayBoundaryHour: number, calorieBudget: number, weatherLat: number, weatherLon: number) =>
+    invoke<SettingsView>('update_settings', { dayBoundaryHour, calorieBudget, weatherLat, weatherLon }),
+  updatePillar: (pillarId: string, name: string, colorToken: string) =>
+    invoke<Pillar[]>('update_pillar', { pillarId, name, colorToken }),
+  getManageActions: () => invoke<ActionAdminView[]>('get_manage_actions'),
+  addAction: (
+    pillarId: string,
+    name: string,
+    kind: 'focus' | 'tick',
+    defaultMinutes: number | null,
+    scheduleType: string,
+    timesPerWeek: number | null,
+    targetPerDay: number,
+  ) =>
+    invoke<ActionAdminView[]>('add_action', {
+      pillarId,
+      name,
+      kind,
+      defaultMinutes,
+      scheduleType,
+      timesPerWeek,
+      targetPerDay,
+    }),
+  updateAction: (
+    actionId: string,
+    name: string,
+    defaultMinutes: number | null,
+    scheduleType: string,
+    timesPerWeek: number | null,
+    targetPerDay: number,
+  ) =>
+    invoke<ActionAdminView[]>('update_action', {
+      actionId,
+      name,
+      defaultMinutes,
+      scheduleType,
+      timesPerWeek,
+      targetPerDay,
+    }),
+  setActionArchived: (actionId: string, archived: boolean) =>
+    invoke<ActionAdminView[]>('set_action_archived', { actionId, archived }),
 };

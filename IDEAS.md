@@ -579,3 +579,35 @@ sonraki iş artık yeni modül eklemekten çok, mevcut olanı gerçek kullanımd
 sağlamlaştırmak: bir Ayarlar ekranı (gün sınırı, kalori bütçesi, hava
 konumu, ömür beklentisi gibi şu an sabit kodlanmış değerler için),
 Path'in tam görünümü, ve Manage (pillar/action düzenleme) ekranı.
+
+## 22. v0.7: Gün Sınırı, Ayarlar, Manage
+
+Orijinal mimaride belirtilen ama hiç bağlanmamış bir eksiği kapattım:
+**gün sınırı** (`ARCHITECTURE.md`: "gece kuşları için gün 04:00'te
+bitsin"). `repo::today()` artık saf `Local::now().date_naive()` değil —
+`settings.day_boundary_hour`'ı okuyup gerçek saatten çıkarıyor, böylece
+sınır 4 ise gece 02:00 hâlâ "dün" sayılıyor. Bu, `today()`'nin artık bir
+`&Connection` alması anlamına geliyordu — tüm çağrı yerlerini güncelledim
+(bazıları zaten `&Connection` parametresi taşıyordu, bazıları
+`MutexGuard` idi; ikisini karıştırmamak için her çağrı yerini tek tek
+kontrol ettim).
+
+**Ayarlar** ekranı (5. sekme): gün sınırı saati, Sofra kalori bütçesi,
+gerçek hava konumu (birkaç hazır şehir + serbest lat/lon). **Manage**
+ekranı (6. sekme): pillar isim/renk düzenleme, pillar başına action
+listesi (isim, zamanlama tipi, dakika/hedef, arşivle/geri getir), yeni
+action ekleme formu. Seed'lenen başlangıç action'ları artık özel bir
+durum değil — Manage'den aynı şekilde düzenlenebiliyor/arşivlenebiliyor.
+
+Doğrulama: `cargo check`/`npm build+check` temiz; gün sınırı kaydırma
+formülü (`now - boundary_saat`) Python'da bağımsız olarak üç saat
+noktasında (02:00/04:00 sınırıyla dün, 04:00 tam sınırda bugün, 05:00
+bugün) doğrulandı; ikili, `day_boundary_hour=4` ve `calorie_budget=2200`
+gibi varsayılan-olmayan ayarlar veritabanında hazır dururken Xvfb altında
+çöküşsüz başlatıldı.
+
+Kalan boşluklar: **Path**'in tam (tarihsel, filtrelenebilir) görünümü
+henüz yok — Quiet Mode'daki 14 günlük mini şerit ve Ledger'daki 30 günlük
+puan trendi bunun yerini kısmen dolduruyor. Bir sonraki mantıklı adım
+muhtemelen budur, ya da artık kavramsal iskelet olgunlaştığı için gerçek
+kullanım/test/paketleme aşamasına geçmek.

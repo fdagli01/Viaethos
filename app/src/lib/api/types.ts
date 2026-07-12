@@ -19,6 +19,14 @@ export interface ActionView {
   active_session: ActiveSessionView | null;
 }
 
+export interface Pillar {
+  id: string;
+  name: string;
+  color_token: string;
+  icon: string | null;
+  sort_order: number;
+}
+
 export interface PillarView {
   id: string;
   name: string;
@@ -130,6 +138,25 @@ export interface CourseView {
   done_lessons: number;
   total_lessons: number;
   due_lessons: Lesson[];
+}
+
+export interface ActionAdminView {
+  id: string;
+  pillar_id: string;
+  name: string;
+  kind: 'focus' | 'tick';
+  default_minutes: number | null;
+  schedule_type: 'daily' | 'weekdays' | 'times_per_week';
+  times_per_week: number | null;
+  target_per_day: number;
+  archived: boolean;
+}
+
+export interface SettingsView {
+  day_boundary_hour: number;
+  calorie_budget: number;
+  weather_lat: number;
+  weather_lon: number;
 }
 
 export interface MementoMoriView {
