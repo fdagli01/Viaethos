@@ -1,0 +1,117 @@
+<script lang="ts">
+  import type { ActionView } from '../api/types';
+  import { api } from '../api/commands';
+
+  let { action, onClose }: { action: ActionView; onClose: () => void } = $props();
+
+  type Phase = 'intend' | 'active' | 'seal';
+
+  let phase = $state<Phase>(action.active_session ? 'active' : 'intend');
+  let intention = $state(action.active_session?.intention ?? '');
+  let minutes = $state(action.active_session?.planned_minutes ?? action.default_minutes ?? 25);
+  let entryId = $state(action.active_session?.entry_id ?? '');
+  let startedAt = $state(action.active_session?.started_at ?? 0);
+  let reflection = $state('');
+  let nowSec = $state(Math.floor(Date.now() / 1000));
+
+  $effect(() => {
+    if (phase !== 'active') return;
+    const id = setInterval(() => {
+      nowSec = Math.floor(Date.now() / 1000);
+    }, 1000);
+    return () => clearInterval(id);
+  });
+
+  const elapsed = $derived(Math.max(0, nowSec - startedAt));
+  const plannedSeconds = $derived(minutes * 60);
+  const remaining = $derived(plannedSeconds - elapsed);
+  const overtime = $derived(remaining < 0);
+  const displaySeconds = $derived(Math.abs(overtime ? remaining : remaining));
+
+  function fmt(totalSeconds: number) {
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  }
+
+  async function begin() {
+    const view = await api.startFocus(action.id, intention.trim() || null, minutes);
+    const pillar = view.pillars.find((p) => p.id === action.pillar_id);
+    const updated = pillar?.actions.find((a) => a.id === action.id);
+    if (updated?.active_session) {
+      entryId = updated.active_session.entry_id;
+      startedAt = updated.active_session.started_at;
+    }
+    phase = 'active';
+  }
+
+  function toSeal() {
+    phase = 'seal';
+  }
+
+  async function complete() {
+    await api.endFocus(entryId, 'completed', reflection.trim() || null);
+    onClose();
+  }
+
+  async function abandon() {
+    await api.endFocus(entryId, 'abandoned', null);
+    onClose();
+  }
+</script>
+
+<div class="ritual-overlay">
+  <div class="ritual-card">
+    {#if phase === 'intend'}
+      <div class="ritual-ring">
+        <div class="time">{minutes}<span style="font-size:16px">m</span></div>
+        <div class="label">{action.name}</div>
+      </div>
+      <textarea
+        class="ritual-input"
+        rows="2"
+        placeholder="What is this session for? (optional)"
+        bind:value={intention}
+      ></textarea>
+      <div class="ritual-actions">
+        <button class="btn ghost" onclick={onClose}>Cancel</button>
+        <input
+          type="number"
+          class="ritual-input"
+          style="width:72px;text-align:center;margin:0"
+          min="5"
+          max="180"
+          bind:value={minutes}
+        />
+        <button class="btn primary" onclick={begin}>Begin</button>
+      </div>
+    {:else if phase === 'active'}
+      <div class="ritual-ring" style={overtime ? 'border-color:var(--body)' : ''}>
+        <div class="time">{overtime ? '+' : ''}{fmt(displaySeconds)}</div>
+        <div class="label">{overtime ? 'overtime' : 'remaining'}</div>
+      </div>
+      {#if intention}
+        <div class="ritual-intention">&ldquo;{intention}&rdquo;</div>
+      {/if}
+      <div class="ritual-actions">
+        <button class="btn ghost" onclick={abandon}>Abandon</button>
+        <button class="btn primary" onclick={toSeal}>End Session</button>
+      </div>
+    {:else}
+      <div class="ritual-ring">
+        <div class="time" style="font-size:24px">{fmt(elapsed)}</div>
+        <div class="label">invested</div>
+      </div>
+      <textarea
+        class="ritual-input"
+        rows="2"
+        placeholder="Seal it with a closing reflection (optional)"
+        bind:value={reflection}
+      ></textarea>
+      <div class="ritual-actions">
+        <button class="btn ghost" onclick={onClose}>Later</button>
+        <button class="btn primary" onclick={complete}>Seal</button>
+      </div>
+    {/if}
+  </div>
+</div>

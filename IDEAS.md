@@ -362,3 +362,33 @@ taşır. Gerekli eklemeler:
    kiosk/tam ekran, ekran koruma davranışı.
 5. Görünümler: Bugün(Panel) / Ritüel / Yol / Memento Mori / Yönetim /
    Ayarlar.
+
+## 15. v0.1: Gerçek Uygulamaya Geçiş
+
+Mockup/mimari aşaması olgunlaştı, kodlamaya başlandı. `app/` klasöründe
+gerçek bir Tauri v2 + Svelte 5 (runes) + SQLite (rusqlite) projesi:
+
+- **Rust tarafı** (`app/src-tauri/src/`): `domain/` saf mantık
+  (schedule çözümleme, streak türetme, Ethos Puanı kuralları — hepsi
+  test edilebilir, DB'den bağımsız); `db/repo.rs` SQLite repository
+  fonksiyonları; `commands.rs` ince Tauri komut katmanı (`get_today`,
+  `complete_tick`, `start_focus`, `end_focus`, `get_ledger_stats`).
+  Odak seansının "zamanlayıcısı" ayrı bir in-memory state machine değil
+  — `entries` tablosunda `ended_at IS NULL` olan satır aktif seansı
+  temsil eder, pencere kapansa/uygulama yeniden açılsa bile ritüel
+  kaybolmaz.
+- **Şema** (`migrations/0001_init.sql`): ARCHITECTURE.md'deki v1 çekirdek
+  tablolar (pillars/actions/entries/tasks/ethos_ledger/settings).
+  v3 modülleri (ders, kalori, uyku, hava) henüz eklenmedi — v0.1 kapsamı
+  bilinçli olarak Mind/Body/Craft/Life + Focus/Tick + Ledger'a
+  daraltıldı.
+- **Svelte tarafı** (`app/src/`): "Today" ekranı (PillarSection, TickRow,
+  FocusRow, RitualModal — Intend→Active→Seal akışı) ve "The Ledger"
+  ekranı gerçek `get_ledger_stats` verisiyle (puan trendi, pillar bazlı
+  odak saatleri, streak tablosu). İkisi arasında üstte basit bir
+  sekme geçişi var; painted Quiet Mode ekranı henüz bu gerçek uygulamaya
+  taşınmadı (mockup'ta kaldı) — bir sonraki adım.
+- Doğrulama: `cargo check` temiz, `npm run build` / `svelte-check` temiz,
+  headless Xvfb altında derlenen ikili dosya çalıştırıldı, SQLite dosyası
+  oluşup varsayılan pillar/action seed'i doğru şekilde yazıldığı
+  doğrulandı.
