@@ -10,6 +10,8 @@ import type {
   Pillar,
   PathHistoryView,
   QuietModeView,
+  RecurrenceType,
+  ScheduleBlockView,
   SettingsView,
   SleepLog,
   Task,
@@ -83,6 +85,7 @@ export const api = {
   getSettings: () => invoke<SettingsView>('get_settings'),
   updateSettings: (dayBoundaryHour: number, calorieBudget: number, weatherLat: number, weatherLon: number) =>
     invoke<SettingsView>('update_settings', { dayBoundaryHour, calorieBudget, weatherLat, weatherLon }),
+  setAiApiKey: (apiKey: string) => invoke<void>('set_ai_api_key', { apiKey }),
   updatePillar: (pillarId: string, name: string, colorToken: string) =>
     invoke<Pillar[]>('update_pillar', { pillarId, name, colorToken }),
   getManageActions: () => invoke<ActionAdminView[]>('get_manage_actions'),
@@ -123,4 +126,28 @@ export const api = {
   setActionArchived: (actionId: string, archived: boolean) =>
     invoke<ActionAdminView[]>('set_action_archived', { actionId, archived }),
   getPathHistory: (days: number) => invoke<PathHistoryView>('get_path_history', { days }),
+  getSchedule: () => invoke<ScheduleBlockView[]>('get_schedule'),
+  addScheduleBlock: (
+    title: string,
+    pillarId: string | null,
+    startTime: string,
+    endTime: string,
+    recurrenceType: RecurrenceType,
+    recurrenceDays: number[] | null,
+    onceDate: string | null,
+    note: string | null,
+  ) =>
+    invoke<ScheduleBlockView[]>('add_schedule_block', {
+      title,
+      pillarId,
+      startTime,
+      endTime,
+      recurrenceType,
+      recurrenceDays,
+      onceDate,
+      note,
+    }),
+  deleteScheduleBlock: (blockId: string) =>
+    invoke<ScheduleBlockView[]>('delete_schedule_block', { blockId }),
+  suggestSchedule: () => invoke<string>('suggest_schedule'),
 };

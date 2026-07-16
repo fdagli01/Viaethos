@@ -140,3 +140,21 @@ CREATE TABLE IF NOT EXISTS sleep_logs (
   quality_1_5 INTEGER NOT NULL CHECK (quality_1_5 BETWEEN 1 AND 5),
   created_at  INTEGER NOT NULL
 );
+
+-- Program: time-of-day blocks (classes, appointments, anything with a fixed
+-- hour) — distinct from actions/habits, which recur without a clock time.
+-- `recurrence` mirrors the actions.schedule JSON shape plus a one-off `once`
+-- variant for single-date appointments.
+CREATE TABLE IF NOT EXISTS schedule_blocks (
+  id          TEXT PRIMARY KEY,
+  title       TEXT NOT NULL,
+  pillar_id   TEXT NULL REFERENCES pillars(id),
+  start_time  TEXT NOT NULL,   -- 'HH:MM'
+  end_time    TEXT NOT NULL,   -- 'HH:MM'
+  recurrence  TEXT NOT NULL,   -- JSON recurrence rule
+  note        TEXT NULL,
+  created_at  INTEGER NOT NULL,
+  archived_at INTEGER NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_schedule_blocks_archived ON schedule_blocks(archived_at);

@@ -528,6 +528,7 @@ pub struct SettingsView {
     pub calorie_budget: f64,
     pub weather_lat: f64,
     pub weather_lon: f64,
+    pub has_ai_api_key: bool,
 }
 
 fn build_settings_view(conn: &rusqlite::Connection) -> Result<SettingsView, String> {
@@ -540,11 +541,15 @@ fn build_settings_view(conn: &rusqlite::Connection) -> Result<SettingsView, Stri
         .and_then(|s| s.parse::<f64>().ok())
         .unwrap_or(DEFAULT_KCAL_BUDGET);
     let (weather_lat, weather_lon) = weather_location(conn);
+    let has_ai_api_key = repo::get_setting(conn, "anthropic_api_key")
+        .map_err(|e| e.to_string())?
+        .is_some_and(|k| !k.trim().is_empty());
     Ok(SettingsView {
         day_boundary_hour,
         calorie_budget,
         weather_lat,
         weather_lon,
+        has_ai_api_key,
     })
 }
 
@@ -1265,4 +1270,204 @@ pub fn get_path_history(db: State<DbState>, days: i64) -> Result<PathHistoryView
         days: path_days,
         milestones,
     })
+}
+
+// ---------------------------------------------------------------- Program --
+
+use crate::domain::models::BlockRecurrence;
+
+#[derive(Serialize)]
+pub struct ScheduleBlockView {
+    pub id: String,
+    pub title: String,
+    pub pillar_id: Option<String>,
+    pub pillar_color_token: Option<String>,
+    pub start_time: String,
+    pub end_time: String,
+    pub recurrence_type: String,
+    pub recurrence_days: Option<Vec<u8>>,
+    pub once_date: Option<String>,
+    pub note: Option<String>,
+    pub is_now: bool,
+}
+
+fn recurrence_to_view(r: &BlockRecurrence) -> (String, Option<Vec<u8>>, Option<String>) {
+    match r {
+        BlockRecurrence::Daily => ("daily".to_string(), None, None),
+        BlockRecurrence::Weekdays => ("weekdays".to_string(), None, None),
+        BlockRecurrence::Days { days } => ("days".to_string(), Some(days.clone()), None),
+        BlockRecurrence::Once { date } => ("once".to_string(), None, Some(date.clone())),
+    }
+}
+
+fn parse_recurrence(recurrence_type: &str, days: Option<Vec<u8>>, once_date: Option<String>) -> BlockRecurrence {
+    match recurrence_type {
+        "weekdays" => BlockRecurrence::Weekdays,
+        "days" => BlockRecurrence::Days {
+            days: days.unwrap_or_default(),
+        },
+        "once" => BlockRecurrence::Once {
+            date: once_date.unwrap_or_default(),
+        },
+        _ => BlockRecurrence::Daily,
+    }
+}
+
+fn build_schedule_view(conn: &rusqlite::Connection) -> Result<Vec<ScheduleBlockView>, String> {
+    let today = repo::today(conn);
+    let blocks = repo::list_schedule_blocks_for_date(conn, today).map_err(|e| e.to_string())?;
+    let pillars = repo::list_pillars(conn).map_err(|e| e.to_string())?;
+    let now_hhmm = chrono::Local::now().format("%H:%M").to_string();
+
+    let mut views: Vec<ScheduleBlockView> = blocks
+        .into_iter()
+        .map(|b| {
+            let (recurrence_type, recurrence_days, once_date) = recurrence_to_view(&b.recurrence);
+            let pillar_color_token = b
+                .pillar_id
+                .as_ref()
+                .and_then(|pid| pillars.iter().find(|p| &p.id == pid))
+                .map(|p| p.color_token.clone());
+            let is_now = now_hhmm.as_str() >= b.start_time.as_str() && now_hhmm.as_str() < b.end_time.as_str();
+            ScheduleBlockView {
+                id: b.id,
+                title: b.title,
+                pillar_id: b.pillar_id,
+                pillar_color_token,
+                start_time: b.start_time,
+                end_time: b.end_time,
+                recurrence_type,
+                recurrence_days,
+                once_date,
+                note: b.note,
+                is_now,
+            }
+        })
+        .collect();
+    views.sort_by(|a, b| a.start_time.cmp(&b.start_time));
+    Ok(views)
+}
+
+#[tauri::command]
+pub fn get_schedule(db: State<DbState>) -> Result<Vec<ScheduleBlockView>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    build_schedule_view(&conn)
+}
+
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub fn add_schedule_block(
+    db: State<DbState>,
+    title: String,
+    pillar_id: Option<String>,
+    start_time: String,
+    end_time: String,
+    recurrence_type: String,
+    recurrence_days: Option<Vec<u8>>,
+    once_date: Option<String>,
+    note: Option<String>,
+) -> Result<Vec<ScheduleBlockView>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let recurrence = parse_recurrence(&recurrence_type, recurrence_days, once_date);
+    repo::add_schedule_block(
+        &conn,
+        &title,
+        pillar_id.as_deref(),
+        &start_time,
+        &end_time,
+        &recurrence,
+        note.as_deref(),
+    )
+    .map_err(|e| e.to_string())?;
+    build_schedule_view(&conn)
+}
+
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub fn update_schedule_block(
+    db: State<DbState>,
+    block_id: String,
+    title: String,
+    pillar_id: Option<String>,
+    start_time: String,
+    end_time: String,
+    recurrence_type: String,
+    recurrence_days: Option<Vec<u8>>,
+    once_date: Option<String>,
+    note: Option<String>,
+) -> Result<Vec<ScheduleBlockView>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let recurrence = parse_recurrence(&recurrence_type, recurrence_days, once_date);
+    repo::update_schedule_block(
+        &conn,
+        &block_id,
+        &title,
+        pillar_id.as_deref(),
+        &start_time,
+        &end_time,
+        &recurrence,
+        note.as_deref(),
+    )
+    .map_err(|e| e.to_string())?;
+    build_schedule_view(&conn)
+}
+
+#[tauri::command]
+pub fn delete_schedule_block(db: State<DbState>, block_id: String) -> Result<Vec<ScheduleBlockView>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    repo::delete_schedule_block(&conn, &block_id).map_err(|e| e.to_string())?;
+    build_schedule_view(&conn)
+}
+
+/// Builds a plain-text day summary (blocks + open tasks) for the AI prompt.
+/// Never holds the DB lock across the network await in `suggest_schedule`.
+fn build_day_summary(conn: &rusqlite::Connection) -> Result<String, String> {
+    let today = repo::today(conn);
+    let blocks = repo::list_schedule_blocks_for_date(conn, today).map_err(|e| e.to_string())?;
+    let tasks = repo::list_open_tasks(conn).map_err(|e| e.to_string())?;
+
+    let mut summary = format!("Bugün: {today}\n\nSaatli program:\n");
+    if blocks.is_empty() {
+        summary.push_str("(bugün için hiç program bloğu yok)\n");
+    } else {
+        let mut sorted = blocks;
+        sorted.sort_by(|a, b| a.start_time.cmp(&b.start_time));
+        for b in sorted {
+            summary.push_str(&format!("- {}–{} {}\n", b.start_time, b.end_time, b.title));
+        }
+    }
+
+    summary.push_str("\nAçık görevler:\n");
+    if tasks.is_empty() {
+        summary.push_str("(açık görev yok)\n");
+    } else {
+        for t in tasks.iter().take(15) {
+            let due = t.due_on.as_deref().unwrap_or("tarihsiz");
+            summary.push_str(&format!("- {} ({due})\n", t.title));
+        }
+    }
+
+    Ok(summary)
+}
+
+#[tauri::command]
+pub async fn suggest_schedule(db: State<'_, DbState>) -> Result<String, String> {
+    let (api_key, summary) = {
+        let conn = db.0.lock().map_err(|e| e.to_string())?;
+        let api_key = repo::get_setting(&conn, "anthropic_api_key")
+            .map_err(|e| e.to_string())?
+            .filter(|k| !k.trim().is_empty())
+            .ok_or_else(|| {
+                "AI API anahtarı ayarlanmamış. Ayarlar ekranından ekleyebilirsin.".to_string()
+            })?;
+        let summary = build_day_summary(&conn)?;
+        (api_key, summary)
+    };
+    crate::ai::suggest(&api_key, &summary).await
+}
+
+#[tauri::command]
+pub fn set_ai_api_key(db: State<DbState>, api_key: String) -> Result<(), String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    repo::set_setting(&conn, "anthropic_api_key", api_key.trim()).map_err(|e| e.to_string())
 }

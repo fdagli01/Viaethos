@@ -165,6 +165,52 @@ pub struct Meal {
     pub created_at: i64,
 }
 
+/// Recurrence rule for a schedule block. Mirrors `Schedule` but adds `Once`
+/// for single-date appointments (a habit is never one-off; a class or
+/// appointment often is).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum BlockRecurrence {
+    Daily,
+    Weekdays,
+    Days { days: Vec<u8> }, // 0=Sun .. 6=Sat
+    Once { date: String },  // 'YYYY-MM-DD'
+}
+
+impl BlockRecurrence {
+    pub fn to_json(&self) -> String {
+        serde_json::to_string(self).unwrap_or_else(|_| "{\"type\":\"daily\"}".to_string())
+    }
+
+    pub fn from_json(s: &str) -> Self {
+        serde_json::from_str(s).unwrap_or(BlockRecurrence::Daily)
+    }
+
+    pub fn is_due_on(&self, date: chrono::NaiveDate) -> bool {
+        use chrono::Datelike;
+        match self {
+            BlockRecurrence::Once { date: d } => d.as_str() == date.format("%Y-%m-%d").to_string(),
+            BlockRecurrence::Daily => true,
+            BlockRecurrence::Weekdays => (1..=5).contains(&date.weekday().num_days_from_sunday()),
+            BlockRecurrence::Days { days } => {
+                days.contains(&(date.weekday().num_days_from_sunday() as u8))
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScheduleBlock {
+    pub id: String,
+    pub title: String,
+    pub pillar_id: Option<String>,
+    pub start_time: String,
+    pub end_time: String,
+    pub recurrence: BlockRecurrence,
+    pub note: Option<String>,
+    pub created_at: i64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Task {
     pub id: String,

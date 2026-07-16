@@ -7,6 +7,7 @@
   import type { ActionView } from '../api/types';
   import PillarSection from './PillarSection.svelte';
   import RitualModal from './RitualModal.svelte';
+  import Schedule from './Schedule.svelte';
   import TaskList from './TaskList.svelte';
   import Sofra from './Sofra.svelte';
   import Mufredat from './Mufredat.svelte';
@@ -26,6 +27,7 @@
   {#if today.loading}
     <p class="empty-state">Loading today&rsquo;s path&hellip;</p>
   {:else if today.view}
+    <Schedule />
     {#each today.view.pillars as pillar (pillar.id)}
       <PillarSection {pillar} onEnterRitual={enterRitual} />
     {/each}

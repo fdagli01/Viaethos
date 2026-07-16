@@ -175,6 +175,23 @@ export interface SettingsView {
   calorie_budget: number;
   weather_lat: number;
   weather_lon: number;
+  has_ai_api_key: boolean;
+}
+
+export type RecurrenceType = 'daily' | 'weekdays' | 'days' | 'once';
+
+export interface ScheduleBlockView {
+  id: string;
+  title: string;
+  pillar_id: string | null;
+  pillar_color_token: string | null;
+  start_time: string;
+  end_time: string;
+  recurrence_type: RecurrenceType;
+  recurrence_days: number[] | null;
+  once_date: string | null;
+  note: string | null;
+  is_now: boolean;
 }
 
 export interface MementoMoriView {

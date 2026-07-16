@@ -1,3 +1,4 @@
+mod ai;
 mod commands;
 mod db;
 mod domain;
@@ -64,6 +65,12 @@ pub fn run() {
             commands::get_path_history,
             commands::get_course_detail,
             commands::reorder_lessons,
+            commands::get_schedule,
+            commands::add_schedule_block,
+            commands::update_schedule_block,
+            commands::delete_schedule_block,
+            commands::suggest_schedule,
+            commands::set_ai_api_key,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

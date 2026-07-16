@@ -5,7 +5,8 @@ use rusqlite::{params, Connection, OptionalExtension, Result};
 use uuid::Uuid;
 
 use crate::domain::models::{
-    Action, ActionKind, Course, Entry, FoodItem, Lesson, Meal, Pillar, Schedule, SleepLog, Task,
+    Action, ActionKind, BlockRecurrence, Course, Entry, FoodItem, Lesson, Meal, Pillar, Schedule,
+    ScheduleBlock, SleepLog, Task,
 };
 
 /// "Today" honors the user's day-boundary setting (default midnight) — a
@@ -778,6 +779,112 @@ pub fn skip_lesson(conn: &Connection, lesson_id: &str) -> Result<()> {
     conn.execute(
         "UPDATE lessons SET status = 'skipped' WHERE id = ?1",
         params![lesson_id],
+    )?;
+    Ok(())
+}
+
+// ---------------------------------------------------------------- program --
+
+fn row_to_schedule_block(r: &rusqlite::Row) -> rusqlite::Result<ScheduleBlock> {
+    let recurrence_json: String = r.get(5)?;
+    Ok(ScheduleBlock {
+        id: r.get(0)?,
+        title: r.get(1)?,
+        pillar_id: r.get(2)?,
+        start_time: r.get(3)?,
+        end_time: r.get(4)?,
+        recurrence: BlockRecurrence::from_json(&recurrence_json),
+        note: r.get(6)?,
+        created_at: r.get(7)?,
+    })
+}
+
+const SCHEDULE_BLOCK_COLUMNS: &str =
+    "id, title, pillar_id, start_time, end_time, recurrence, note, created_at";
+
+/// Every non-archived block, regardless of recurrence — the raw rule set
+/// (for Manage-style editing), not resolved against a date.
+pub fn list_all_schedule_blocks(conn: &Connection) -> Result<Vec<ScheduleBlock>> {
+    let mut stmt = conn.prepare(&format!(
+        "SELECT {SCHEDULE_BLOCK_COLUMNS} FROM schedule_blocks
+         WHERE archived_at IS NULL ORDER BY start_time"
+    ))?;
+    let rows = stmt.query_map([], row_to_schedule_block)?;
+    rows.collect()
+}
+
+/// Blocks whose recurrence is due on `date`, in time order — what the day
+/// actually asks for, resolved from the raw rule set.
+pub fn list_schedule_blocks_for_date(conn: &Connection, date: NaiveDate) -> Result<Vec<ScheduleBlock>> {
+    let all = list_all_schedule_blocks(conn)?;
+    Ok(all
+        .into_iter()
+        .filter(|b| b.recurrence.is_due_on(date))
+        .collect())
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn add_schedule_block(
+    conn: &Connection,
+    title: &str,
+    pillar_id: Option<&str>,
+    start_time: &str,
+    end_time: &str,
+    recurrence: &BlockRecurrence,
+    note: Option<&str>,
+) -> Result<String> {
+    let id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO schedule_blocks
+           (id, title, pillar_id, start_time, end_time, recurrence, note, created_at, archived_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, NULL)",
+        params![
+            id,
+            title,
+            pillar_id,
+            start_time,
+            end_time,
+            recurrence.to_json(),
+            note,
+            now_ts()
+        ],
+    )?;
+    Ok(id)
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn update_schedule_block(
+    conn: &Connection,
+    block_id: &str,
+    title: &str,
+    pillar_id: Option<&str>,
+    start_time: &str,
+    end_time: &str,
+    recurrence: &BlockRecurrence,
+    note: Option<&str>,
+) -> Result<()> {
+    conn.execute(
+        "UPDATE schedule_blocks
+         SET title = ?1, pillar_id = ?2, start_time = ?3, end_time = ?4,
+             recurrence = ?5, note = ?6
+         WHERE id = ?7",
+        params![
+            title,
+            pillar_id,
+            start_time,
+            end_time,
+            recurrence.to_json(),
+            note,
+            block_id
+        ],
+    )?;
+    Ok(())
+}
+
+pub fn delete_schedule_block(conn: &Connection, block_id: &str) -> Result<()> {
+    conn.execute(
+        "UPDATE schedule_blocks SET archived_at = ?1 WHERE id = ?2",
+        params![now_ts(), block_id],
     )?;
     Ok(())
 }

@@ -9,6 +9,9 @@
   let weatherLat = $state(41.0082);
   let weatherLon = $state(28.9784);
   let saved = $state(false);
+  let hasAiApiKey = $state(false);
+  let aiApiKeyInput = $state('');
+  let aiKeySaved = $state(false);
 
   const cities: [string, number, number][] = [
     ['Istanbul', 41.0082, 28.9784],
@@ -24,6 +27,7 @@
     calorieBudget = settings.calorie_budget;
     weatherLat = settings.weather_lat;
     weatherLon = settings.weather_lon;
+    hasAiApiKey = settings.has_ai_api_key;
   });
 
   function pickCity(lat: number, lon: number) {
@@ -36,6 +40,16 @@
     settings = await api.updateSettings(dayBoundaryHour, calorieBudget, weatherLat, weatherLon);
     saved = true;
     setTimeout(() => (saved = false), 2000);
+  }
+
+  async function saveAiKey(e: Event) {
+    e.preventDefault();
+    if (!aiApiKeyInput.trim()) return;
+    await api.setAiApiKey(aiApiKeyInput.trim());
+    hasAiApiKey = true;
+    aiApiKeyInput = '';
+    aiKeySaved = true;
+    setTimeout(() => (aiKeySaved = false), 2000);
   }
 </script>
 
@@ -74,6 +88,29 @@
       <div class="settings-actions">
         <button class="btn primary" type="submit">Save</button>
         {#if saved}<span class="action-meta">Saved.</span>{/if}
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3>AI Program Önerisi</h3>
+    <p class="settings-hint">
+      Program ekranındaki "AI ile öner" düğmesi bir Anthropic API anahtarı gerektirir. Anahtar
+      yalnızca bu bilgisayardaki yerel veritabanında durur, başka hiçbir yere gönderilmez.
+    </p>
+    <form class="settings-form" onsubmit={saveAiKey}>
+      <label class="task-today-toggle">
+        API anahtarı
+        <input
+          class="task-input"
+          type="password"
+          placeholder={hasAiApiKey ? 'Ayarlandı — değiştirmek için yeni bir anahtar gir' : 'sk-ant-…'}
+          bind:value={aiApiKeyInput}
+        />
+      </label>
+      <div class="settings-actions">
+        <button class="btn primary" type="submit">Kaydet</button>
+        {#if aiKeySaved}<span class="action-meta">Kaydedildi.</span>{/if}
       </div>
     </form>
   </div>
