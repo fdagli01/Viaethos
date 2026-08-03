@@ -17,15 +17,15 @@
     class:filled={doneToday && !active}
     style={doneToday && !active ? `background:${color}` : `border-color:${active ? color : ''}`}
     onclick={() => onEnter(action)}
-    aria-label={`Enter ritual for ${action.name}`}
+    aria-label={`${action.name} seansına gir`}
   >
     {#if doneToday && !active}&#10003;{/if}
   </button>
   <span class="action-name">{action.name}</span>
   {#if action.streak > 0}
-    <span class="action-meta">{action.streak}d streak</span>
+    <span class="action-meta">{action.streak}g seri</span>
   {/if}
   <button class="focus-btn" class:active onclick={() => onEnter(action)}>
-    {active ? 'Resume' : doneToday ? 'Again' : 'Begin'}
+    {active ? 'Devam' : doneToday ? 'Tekrar' : 'Başla'}
   </button>
 </div>

@@ -112,6 +112,14 @@ export interface Meal {
   created_at: number;
 }
 
+export interface MealPreset {
+  name: string;
+  kcal: number;
+  protein_g: number;
+  carb_g: number;
+  fat_g: number;
+}
+
 export interface MealsView {
   meals: Meal[];
   kcal_total: number;

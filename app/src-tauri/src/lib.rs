@@ -71,6 +71,8 @@ pub fn run() {
             commands::delete_schedule_block,
             commands::suggest_schedule,
             commands::set_ai_api_key,
+            commands::get_meal_presets,
+            commands::reset_all_data,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -21,9 +21,9 @@
   }
 
   const statusLabel: Record<string, string> = {
-    planned: 'planned',
-    done: 'done',
-    skipped: 'skipped',
+    planned: 'planlı',
+    done: 'bitti',
+    skipped: 'atlandı',
   };
 </script>
 
@@ -36,28 +36,28 @@
         <span class="pillar-dot" style={`background:${detail.course.color_token}`}></span>
         <h2>{detail.course.name}</h2>
         <span class="action-meta"
-          >{detail.course.done_lessons}/{detail.course.total_lessons} planted</span
+          >{detail.course.done_lessons}/{detail.course.total_lessons} konu</span
         >
-        <button class="focus-btn" onclick={onClose}>Close</button>
+        <button class="focus-btn" onclick={onClose}>Kapat</button>
       </div>
 
       {#if detail.upcoming.length > 0}
         <div class="cd-section">
-          <h3>Upcoming Reviews</h3>
+          <h3>Yaklaşan tekrarlar</h3>
           {#each detail.upcoming as lesson (lesson.id)}
             <div class="action-row">
               <span class="action-name">{lesson.title}</span>
               <span class="action-meta">{lesson.planned_on}</span>
-              {#if lesson.review_of}<span class="action-meta">review</span>{/if}
+              {#if lesson.review_of}<span class="action-meta">tekrar</span>{/if}
             </div>
           {/each}
         </div>
       {/if}
 
       <div class="cd-section">
-        <h3>All Topics</h3>
+        <h3>Tüm konular</h3>
         {#if detail.all_lessons.length === 0}
-          <p class="empty-state">No topics yet.</p>
+          <p class="empty-state">Henüz konu yok.</p>
         {:else}
           {#each detail.all_lessons as lesson, i (lesson.id)}
             <div class="action-row">
@@ -72,7 +72,7 @@
               <span class="action-name">{lesson.title}</span>
               <span class="action-meta">{statusLabel[lesson.status]}</span>
               <span class="action-meta">{lesson.planned_on}</span>
-              {#if lesson.review_of}<span class="action-meta">review</span>{/if}
+              {#if lesson.review_of}<span class="action-meta">tekrar</span>{/if}
             </div>
           {/each}
         {/if}

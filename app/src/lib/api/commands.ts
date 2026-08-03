@@ -5,6 +5,7 @@ import type {
   CourseView,
   FoodItem,
   LedgerStats,
+  MealPreset,
   MealsView,
   MementoMoriView,
   Pillar,
@@ -57,6 +58,7 @@ export const api = {
       fatPer100g,
     }),
   getMealsToday: () => invoke<MealsView>('get_meals_today'),
+  getMealPresets: () => invoke<MealPreset[]>('get_meal_presets'),
   addMeal: (
     timeSlot: TimeSlot,
     name: string,
@@ -150,4 +152,5 @@ export const api = {
   deleteScheduleBlock: (blockId: string) =>
     invoke<ScheduleBlockView[]>('delete_schedule_block', { blockId }),
   suggestSchedule: () => invoke<string>('suggest_schedule'),
+  resetAllData: () => invoke<TodayView>('reset_all_data'),
 };

@@ -586,7 +586,13 @@ function paintWheatField(
       const y = wheatTop + gy * cell + (r() - 0.5) * cell * 1.5;
       const depth = Math.max(0, Math.min(1, (y - wheatTop) / (H - wheatTop)));
       // A studied course's row combs fuller and more golden — "planted".
-      const bandRatio = bands ? bands[Math.min(Math.floor((x / W) * bands.length), bands.length - 1)].ratio : 0;
+      // x carries a random jitter that can push it just past either edge of
+      // the canvas, so the band index is clamped at both ends — an
+      // unclamped negative index reads undefined and kills the whole paint.
+      const bandIndex = bands
+        ? Math.max(0, Math.min(Math.floor((x / W) * bands.length), bands.length - 1))
+        : 0;
+      const bandRatio = bands ? bands[bandIndex].ratio : 0;
       const len = 12 + depth * 22 + bandRatio * 8 + r() * 10;
       const ang = -0.35 + (r() - 0.5) * (0.3 + wx.amp * 0.5) - depth * 0.15;
       const pick = r();

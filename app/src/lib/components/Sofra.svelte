@@ -1,11 +1,23 @@
 <script lang="ts">
   import { meals } from '../stores/meals.svelte';
   import { api } from '../api/commands';
-  import type { FoodItem, TimeSlot } from '../api/types';
+  import type { FoodItem, MealPreset, TimeSlot } from '../api/types';
 
-  const slots: TimeSlot[] = ['breakfast', 'lunch', 'dinner', 'snack'];
+  const slots: [TimeSlot, string][] = [
+    ['breakfast', 'Kahvaltı'],
+    ['lunch', 'Öğle'],
+    ['dinner', 'Akşam'],
+    ['snack', 'Ara'],
+  ];
 
-  function defaultSlot(): TimeSlot {
+  const slotLabels: Record<TimeSlot, string> = Object.fromEntries(slots) as Record<
+    TimeSlot,
+    string
+  >;
+
+  // The slot is read off the clock rather than asked for — at 08:00 it is
+  // breakfast, and a one-tap repeat should not stop to confirm that.
+  function currentSlot(): TimeSlot {
     const h = new Date().getHours();
     if (h < 11) return 'breakfast';
     if (h < 16) return 'lunch';
@@ -13,7 +25,8 @@
     return 'snack';
   }
 
-  let timeSlot = $state<TimeSlot>(defaultSlot());
+  let adding = $state(false);
+  let timeSlot = $state<TimeSlot>(currentSlot());
   let query = $state('');
   let results = $state<FoodItem[]>([]);
   let selected = $state<FoodItem | null>(null);
@@ -43,6 +56,10 @@
 
   function scale(per100: number) {
     return (per100 * grams) / 100;
+  }
+
+  async function logPreset(preset: MealPreset) {
+    await meals.logPreset(currentSlot(), preset);
   }
 
   async function logSelected() {
@@ -84,74 +101,88 @@
     <span class="action-meta" class:overdue={overBudget}
       >{Math.round(kcalTotal)} / {Math.round(kcalBudget)} kcal</span
     >
+    <button
+      class="add-toggle"
+      class:open={adding}
+      style="margin-left:0"
+      onclick={() => (adding = !adding)}
+      aria-label="Öğün ekle">+</button
+    >
   </div>
 
-  <div class="sofra-add">
-    <select class="task-select" bind:value={timeSlot}>
-      {#each slots as s}
-        <option value={s}>{s}</option>
+  {#if meals.presets.length > 0}
+    <!-- Already-eaten meals, most frequent first: the usual breakfast is one
+         tap, not a search and a gram count all over again. -->
+    <div class="chip-row">
+      {#each meals.presets as preset (preset.name)}
+        <button class="chip" onclick={() => logPreset(preset)}>
+          {preset.name} <span class="chip-kcal">{Math.round(preset.kcal)}</span>
+        </button>
       {/each}
-    </select>
+    </div>
+  {/if}
 
-    {#if !manual}
-      <div class="sofra-search">
-        <input
-          class="task-input"
-          placeholder="Search a food…"
-          bind:value={query}
-          oninput={() => (selected = null)}
-        />
-        {#if results.length > 0}
-          <div class="sofra-results">
-            {#each results as item (item.id)}
-              <button class="sofra-result" onclick={() => pick(item)}>
-                {item.name} <span class="action-meta">{Math.round(item.kcal_per_100g)} kcal/100g</span>
-              </button>
-            {/each}
-          </div>
+  {#if adding}
+    <div class="add-form">
+      <select class="task-select" bind:value={timeSlot} aria-label="Öğün">
+        {#each slots as [value, label] (value)}
+          <option {value}>{label}</option>
+        {/each}
+      </select>
+
+      {#if !manual}
+        <div class="sofra-search">
+          <input
+            class="task-input"
+            placeholder="Yiyecek ara…"
+            bind:value={query}
+            oninput={() => (selected = null)}
+          />
+          {#if results.length > 0}
+            <div class="sofra-results">
+              {#each results as item (item.id)}
+                <button class="sofra-result" onclick={() => pick(item)}>
+                  {item.name}
+                  <span class="action-meta">{Math.round(item.kcal_per_100g)} kcal/100g</span>
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
+        {#if selected}
+          <label class="task-today-toggle">
+            gram <input class="num-input" type="number" min="1" bind:value={grams} />
+          </label>
+          <span class="action-meta">{Math.round(scale(selected.kcal_per_100g))} kcal</span>
+          <button class="btn primary" onclick={logSelected}>Ekle</button>
         {/if}
-      </div>
-      {#if selected}
-        <label class="task-today-toggle">
-          grams <input class="sofra-grams" type="number" min="1" bind:value={grams} />
-        </label>
-        <span class="action-meta">{Math.round(scale(selected.kcal_per_100g))} kcal</span>
-        <button class="btn primary" onclick={logSelected}>Add</button>
+        <button class="focus-btn" onclick={() => (manual = true)}>Elle gir</button>
+      {:else}
+        <form class="sofra-manual" onsubmit={logManual}>
+          <input class="task-input" placeholder="Öğün adı" bind:value={manualName} />
+          <input class="num-input" type="number" min="1" placeholder="kcal" bind:value={manualKcal} />
+          <button class="btn primary" type="submit">Ekle</button>
+          <button type="button" class="focus-btn" onclick={() => (manual = false)}>Ara</button>
+        </form>
       {/if}
-      <button class="focus-btn" onclick={() => (manual = true)}>Manual entry</button>
-    {:else}
-      <form class="sofra-manual" onsubmit={logManual}>
-        <input class="task-input" placeholder="Meal name" bind:value={manualName} />
-        <input class="sofra-grams" type="number" min="1" placeholder="kcal" bind:value={manualKcal} />
-        <button class="btn primary" type="submit">Add</button>
-        <button type="button" class="focus-btn" onclick={() => (manual = false)}>Search instead</button>
-      </form>
-    {/if}
-  </div>
+    </div>
+  {/if}
 
   {#if !meals.view || meals.view.meals.length === 0}
-    <p class="empty-state">No meals logged yet today.</p>
+    <p class="empty-state">Bugün henüz öğün girilmedi.</p>
   {:else}
     {#each meals.view.meals as meal (meal.id)}
       <div class="action-row">
-        <span class="action-meta sofra-slot">{meal.time_slot}</span>
+        <span class="action-meta sofra-slot">{slotLabels[meal.time_slot]}</span>
         <span class="action-name">{meal.name}</span>
         <span class="action-meta">{Math.round(meal.kcal)} kcal</span>
-        <button class="focus-btn" onclick={() => meals.remove(meal.id)}>Remove</button>
+        <button class="focus-btn" onclick={() => meals.remove(meal.id)}>Sil</button>
       </div>
     {/each}
   {/if}
 </section>
 
 <style>
-  .sofra-add {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 12px 18px;
-    border-bottom: 1px solid var(--card-border);
-    flex-wrap: wrap;
-  }
   .sofra-search {
     position: relative;
     flex: 1;
@@ -185,15 +216,6 @@
   .sofra-result:hover {
     background: var(--surface);
   }
-  .sofra-grams {
-    width: 64px;
-    background: var(--surface);
-    border: 1px solid var(--card-border);
-    border-radius: var(--radius-sm);
-    color: var(--ink);
-    padding: 8px 10px;
-    font-size: 13px;
-  }
   .sofra-manual {
     display: flex;
     gap: 8px;
@@ -205,5 +227,9 @@
     font-size: 10.5px;
     letter-spacing: 0.06em;
     min-width: 70px;
+  }
+  .chip-kcal {
+    color: var(--ink-faint);
+    margin-left: 4px;
   }
 </style>

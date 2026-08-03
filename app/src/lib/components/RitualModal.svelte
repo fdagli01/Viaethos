@@ -80,11 +80,11 @@
       <textarea
         class="ritual-input"
         rows="2"
-        placeholder="What is this session for? (optional)"
+        placeholder="Bu seans ne için? (isteğe bağlı)"
         bind:value={intention}
       ></textarea>
       <div class="ritual-actions">
-        <button class="btn ghost" onclick={onClose}>Cancel</button>
+        <button class="btn ghost" onclick={onClose}>Vazgeç</button>
         <input
           type="number"
           class="ritual-input"
@@ -93,34 +93,34 @@
           max="180"
           bind:value={minutes}
         />
-        <button class="btn primary" onclick={begin}>Begin</button>
+        <button class="btn primary" onclick={begin}>Başla</button>
       </div>
     {:else if phase === 'active'}
       <div class="ritual-ring" style={overtime ? 'border-color:var(--body)' : ''}>
         <div class="time">{overtime ? '+' : ''}{fmt(displaySeconds)}</div>
-        <div class="label">{overtime ? 'overtime' : 'remaining'}</div>
+        <div class="label">{overtime ? 'ek süre' : 'kalan'}</div>
       </div>
       {#if intention}
         <div class="ritual-intention">&ldquo;{intention}&rdquo;</div>
       {/if}
       <div class="ritual-actions">
-        <button class="btn ghost" onclick={abandon}>Abandon</button>
-        <button class="btn primary" onclick={toSeal}>End Session</button>
+        <button class="btn ghost" onclick={abandon}>Bırak</button>
+        <button class="btn primary" onclick={toSeal}>Bitir</button>
       </div>
     {:else}
       <div class="ritual-ring">
         <div class="time" style="font-size:24px">{fmt(elapsed)}</div>
-        <div class="label">invested</div>
+        <div class="label">harcanan</div>
       </div>
       <textarea
         class="ritual-input"
         rows="2"
-        placeholder="Seal it with a closing reflection (optional)"
+        placeholder="Kapanış notu (isteğe bağlı)"
         bind:value={reflection}
       ></textarea>
       <div class="ritual-actions">
-        <button class="btn ghost" onclick={onClose}>Later</button>
-        <button class="btn primary" onclick={complete}>Seal</button>
+        <button class="btn ghost" onclick={onClose}>Sonra</button>
+        <button class="btn primary" onclick={complete}>Mühürle</button>
       </div>
     {/if}
   </div>

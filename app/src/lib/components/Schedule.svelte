@@ -4,12 +4,20 @@
   import { today } from '../stores/today.svelte';
   import type { RecurrenceType } from '../api/types';
 
+  let adding = $state(false);
   let title = $state('');
-  let pillarId = $state('');
   let startTime = $state('09:00');
   let endTime = $state('10:00');
-  let recurrenceType = $state<RecurrenceType>('once');
-  let onceDate = $state(todayStr());
+  // Fixed-hour things — classes, work, the gym — are the normal case, so the
+  // form defaults to recurring. A block added once keeps showing up instead of
+  // having to be re-entered every morning.
+  let recurrenceType = $state<RecurrenceType>('weekdays');
+
+  const recurrences: [RecurrenceType, string][] = [
+    ['weekdays', 'Hafta içi'],
+    ['daily', 'Her gün'],
+    ['once', 'Bugün'],
+  ];
 
   function todayStr() {
     const d = new Date();
@@ -31,12 +39,12 @@
     if (!t) return;
     await schedule.add(
       t,
-      pillarId || null,
+      null,
       startTime,
       endTime,
       recurrenceType,
       null,
-      recurrenceType === 'once' ? onceDate : null,
+      recurrenceType === 'once' ? todayStr() : null,
     );
     title = '';
   }
@@ -53,31 +61,33 @@
     >
       {schedule.suggesting ? 'Düşünüyor…' : 'AI ile öner'}
     </button>
+    <button
+      class="add-toggle"
+      class:open={adding}
+      style="margin-left:0"
+      onclick={() => (adding = !adding)}
+      aria-label="Program bloğu ekle">+</button
+    >
   </div>
 
-  <form class="schedule-add" onsubmit={submit}>
-    <input class="task-input" placeholder="Ne var? (örn. Kimya dersi)" bind:value={title} />
-    {#if today.view}
-      <select class="task-select" bind:value={pillarId}>
-        <option value="">Sütun yok</option>
-        {#each today.view.pillars as pillar (pillar.id)}
-          <option value={pillar.id}>{pillar.name}</option>
-        {/each}
-      </select>
-    {/if}
-    <input class="schedule-time" type="time" bind:value={startTime} />
-    <span class="action-meta">–</span>
-    <input class="schedule-time" type="time" bind:value={endTime} />
-    <select class="task-select" bind:value={recurrenceType}>
-      <option value="once">Tek seferlik</option>
-      <option value="daily">Her gün</option>
-      <option value="weekdays">Hafta içi</option>
-    </select>
-    {#if recurrenceType === 'once'}
-      <input class="schedule-time" type="date" bind:value={onceDate} />
-    {/if}
-    <button class="btn primary" type="submit">Ekle</button>
-  </form>
+  {#if adding}
+    <form class="add-form" onsubmit={submit}>
+      <!-- svelte-ignore a11y_autofocus -->
+      <input class="task-input" placeholder="Ne var? (örn. Kimya dersi)" bind:value={title} autofocus />
+      <input class="time-input" type="time" bind:value={startTime} aria-label="Başlangıç" />
+      <span class="action-meta">–</span>
+      <input class="time-input" type="time" bind:value={endTime} aria-label="Bitiş" />
+      {#each recurrences as [value, label] (value)}
+        <button
+          type="button"
+          class="chip"
+          class:on={recurrenceType === value}
+          onclick={() => (recurrenceType = value)}>{label}</button
+        >
+      {/each}
+      <button class="btn primary" type="submit">Ekle</button>
+    </form>
+  {/if}
 
   {#if schedule.suggestion || schedule.suggestError}
     <div class="schedule-suggestion">
@@ -108,22 +118,6 @@
 </section>
 
 <style>
-  .schedule-add {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 18px;
-    border-bottom: 1px solid var(--card-border);
-    flex-wrap: wrap;
-  }
-  .schedule-time {
-    background: var(--surface);
-    border: 1px solid var(--card-border);
-    border-radius: var(--radius-sm);
-    color: var(--ink);
-    padding: 8px 10px;
-    font-size: 13px;
-  }
   .schedule-block-time {
     min-width: 96px;
   }

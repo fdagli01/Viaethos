@@ -18,7 +18,7 @@
     class:filled={done}
     style={done ? `background:${color}` : ''}
     onclick={toggle}
-    aria-label={`Complete ${action.name}`}
+    aria-label={`${action.name} tamamlandı`}
   >
     {#if done}&#10003;{/if}
   </button>
@@ -27,6 +27,6 @@
     <span class="action-meta">{action.today_count}/{action.target_per_day}</span>
   {/if}
   {#if action.streak > 0}
-    <span class="action-meta">{action.streak}d streak</span>
+    <span class="action-meta">{action.streak}g seri</span>
   {/if}
 </div>

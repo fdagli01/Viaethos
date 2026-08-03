@@ -2,6 +2,7 @@
   import { tasks } from '../stores/tasks.svelte';
   import { today } from '../stores/today.svelte';
 
+  let adding = $state(false);
   let title = $state('');
   let pillarId = $state<string>('');
   let dueToday = $state(false);
@@ -33,79 +34,52 @@
 
 <section class="pillar-section">
   <div class="pillar-header">
-    <h2>The Path Ahead</h2>
-    <span class="action-meta" style="margin-left:auto">{tasks.list.length} open</span>
+    <h2>Yapılacaklar</h2>
+    <span class="action-meta" style="margin-left:auto">{tasks.list.length} açık</span>
+    <button
+      class="add-toggle"
+      class:open={adding}
+      style="margin-left:0"
+      onclick={() => (adding = !adding)}
+      aria-label="Görev ekle">+</button
+    >
   </div>
 
-  <form class="task-add" onsubmit={submit}>
-    <input class="task-input" placeholder="Add to the path…" bind:value={title} />
-    {#if today.view}
-      <select class="task-select" bind:value={pillarId}>
-        <option value="">No pillar</option>
-        {#each today.view.pillars as pillar (pillar.id)}
-          <option value={pillar.id}>{pillar.name}</option>
-        {/each}
-      </select>
-    {/if}
-    <label class="task-today-toggle">
-      <input type="checkbox" bind:checked={dueToday} /> today
-    </label>
-    <button class="btn primary" type="submit">Add</button>
-  </form>
+  {#if adding}
+    <form class="add-form" onsubmit={submit}>
+      <input class="task-input" placeholder="Ne yapılacak?" bind:value={title} />
+      {#if today.view}
+        <select class="task-select" bind:value={pillarId} aria-label="Sütun">
+          <option value="">Sütun yok</option>
+          {#each today.view.pillars as pillar (pillar.id)}
+            <option value={pillar.id}>{pillar.name}</option>
+          {/each}
+        </select>
+      {/if}
+      <label class="task-today-toggle">
+        <input type="checkbox" bind:checked={dueToday} /> bugün
+      </label>
+      <button class="btn primary" type="submit">Ekle</button>
+    </form>
+  {/if}
 
   {#if tasks.list.length === 0}
-    <p class="empty-state">The path ahead is clear.</p>
+    <p class="empty-state">Önün açık.</p>
   {:else}
     {#each tasks.list as task (task.id)}
       <div class="action-row">
-        <button class="tick-circle" onclick={() => tasks.complete(task.id)} aria-label={`Complete ${task.title}`}
+        <button
+          class="tick-circle"
+          onclick={() => tasks.complete(task.id)}
+          aria-label={`${task.title} tamamlandı`}
         ></button>
         <span class="pillar-dot" style={`background:${pillarColor(task.pillar_id)}`}></span>
         <span class="action-name">{task.title}</span>
         {#if task.due_on}
           <span class="action-meta" class:overdue={isOverdue(task.due_on)}>{task.due_on}</span>
         {/if}
-        <button class="focus-btn" onclick={() => tasks.remove(task.id)}>Remove</button>
+        <button class="focus-btn" onclick={() => tasks.remove(task.id)}>Sil</button>
       </div>
     {/each}
   {/if}
 </section>
-
-<style>
-  .task-add {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    padding: 12px 18px;
-    border-bottom: 1px solid var(--card-border);
-    flex-wrap: wrap;
-  }
-  .task-input {
-    flex: 1;
-    min-width: 160px;
-    background: var(--surface);
-    border: 1px solid var(--card-border);
-    border-radius: var(--radius-sm);
-    color: var(--ink);
-    padding: 8px 12px;
-    font-size: 13.5px;
-  }
-  .task-select {
-    background: var(--surface);
-    border: 1px solid var(--card-border);
-    border-radius: var(--radius-sm);
-    color: var(--ink);
-    padding: 8px 10px;
-    font-size: 13px;
-  }
-  .task-today-toggle {
-    font-size: 12.5px;
-    color: var(--ink-muted);
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-  .overdue {
-    color: var(--body);
-  }
-</style>

@@ -391,6 +391,33 @@ pub fn delete_meal(db: State<DbState>, meal_id: String) -> Result<MealsView, Str
     build_meals_view(&conn)
 }
 
+#[derive(Serialize)]
+pub struct MealPreset {
+    pub name: String,
+    pub kcal: f64,
+    pub protein_g: f64,
+    pub carb_g: f64,
+    pub fat_g: f64,
+}
+
+/// A short list of meals already eaten before, so the common case — the same
+/// breakfast again — costs one tap instead of a search and a gram count.
+#[tauri::command]
+pub fn get_meal_presets(db: State<DbState>) -> Result<Vec<MealPreset>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let rows = repo::recent_meals(&conn, 8).map_err(|e| e.to_string())?;
+    Ok(rows
+        .into_iter()
+        .map(|(name, kcal, protein_g, carb_g, fat_g)| MealPreset {
+            name,
+            kcal,
+            protein_g,
+            carb_g,
+            fat_g,
+        })
+        .collect())
+}
+
 // ----------------------------------------------------------------- Manage --
 
 #[tauri::command]
@@ -1244,7 +1271,7 @@ pub fn get_path_history(db: State<DbState>, days: i64) -> Result<PathHistoryView
             if date >= since && date <= today {
                 milestones.push(PathMilestone {
                     date: date.to_string(),
-                    label: format!("{} · {n}-day streak", action.name),
+                    label: format!("{} · {n} günlük seri", action.name),
                     kind: "streak".to_string(),
                 });
             }
@@ -1257,7 +1284,7 @@ pub fn get_path_history(db: State<DbState>, days: i64) -> Result<PathHistoryView
             if date >= since && date <= today {
                 milestones.push(PathMilestone {
                     date: date.to_string(),
-                    label: format!("{n} Ethos Points"),
+                    label: format!("{n} Ethos Puanı"),
                     kind: "points".to_string(),
                 });
             }
@@ -1470,4 +1497,19 @@ pub async fn suggest_schedule(db: State<'_, DbState>) -> Result<String, String> 
 pub fn set_ai_api_key(db: State<DbState>, api_key: String) -> Result<(), String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
     repo::set_setting(&conn, "anthropic_api_key", api_key.trim()).map_err(|e| e.to_string())
+}
+
+// ------------------------------------------------------------------ Reset --
+
+/// Wipes everything the user ever entered and comes back up seeded like a
+/// fresh install. Irreversible by design — there is no undo buffer, so the UI
+/// is responsible for confirming before it calls this.
+#[tauri::command]
+pub fn reset_all_data(app: tauri::AppHandle, db: State<DbState>) -> Result<TodayView, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    repo::reset_all(&conn).map_err(|e| e.to_string())?;
+    let view = build_today_view(&conn)?;
+    // Every store listens on this event; one emit re-reads the whole app.
+    let _ = app.emit("entry-logged", "reset");
+    Ok(view)
 }

@@ -33,7 +33,7 @@
     <h2>Uyku</h2>
     {#if sleep.last}
       <span class="action-meta" style="margin-left:auto"
-        >last: {hoursBetween(sleep.last.bed_at, sleep.last.woke_at).toFixed(1)}h &middot; {'★'.repeat(
+        >dün: {hoursBetween(sleep.last.bed_at, sleep.last.woke_at).toFixed(1)}s &middot; {'★'.repeat(
           sleep.last.quality_1_5,
         )}{'☆'.repeat(5 - sleep.last.quality_1_5)}</span
       >
@@ -41,21 +41,25 @@
   </div>
 
   <form class="sleep-form" onsubmit={submit}>
-    <label class="task-today-toggle">Bed <input class="sleep-time" type="time" bind:value={bedAt} /></label>
-    <label class="task-today-toggle">Woke <input class="sleep-time" type="time" bind:value={wokeAt} /></label>
-    <span class="action-meta">{previewHours.toFixed(1)}h</span>
+    <label class="task-today-toggle"
+      >Yattım <input class="time-input" type="time" bind:value={bedAt} /></label
+    >
+    <label class="task-today-toggle"
+      >Kalktım <input class="time-input" type="time" bind:value={wokeAt} /></label
+    >
+    <span class="action-meta">{previewHours.toFixed(1)}s</span>
     <div class="sleep-stars">
-      {#each [1, 2, 3, 4, 5] as n}
+      {#each [1, 2, 3, 4, 5] as n (n)}
         <button
           type="button"
           class="sleep-star"
           class:filled={n <= quality}
           onclick={() => (quality = n)}
-          aria-label={`Quality ${n}`}>★</button
+          aria-label={`Kalite ${n}`}>★</button
         >
       {/each}
     </div>
-    <button class="btn primary" type="submit">Log last night</button>
+    <button class="btn primary" type="submit">Kaydet</button>
   </form>
 </section>
 
@@ -66,14 +70,6 @@
     gap: 14px;
     padding: 14px 18px;
     flex-wrap: wrap;
-  }
-  .sleep-time {
-    background: var(--surface);
-    border: 1px solid var(--card-border);
-    border-radius: var(--radius-sm);
-    color: var(--ink);
-    padding: 6px 10px;
-    font-size: 13px;
   }
   .sleep-stars {
     display: flex;

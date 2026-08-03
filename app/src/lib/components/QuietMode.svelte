@@ -16,13 +16,13 @@
     realWeather ? conditionFromWmoCode(realWeather.weather_code) : null,
   );
   const conditionLabels: Record<string, string> = {
-    clear: 'Clear',
-    partly_cloudy: 'Partly cloudy',
-    overcast: 'Overcast',
-    fog: 'Fog',
-    rain: 'Rain',
-    storm: 'Storm',
-    snow: 'Snow',
+    clear: 'Açık',
+    partly_cloudy: 'Parçalı bulutlu',
+    overcast: 'Kapalı',
+    fog: 'Sisli',
+    rain: 'Yağmurlu',
+    storm: 'Fırtınalı',
+    snow: 'Karlı',
   };
 
   const hour = $derived(now.getHours() + now.getMinutes() / 60);
@@ -36,10 +36,10 @@
   const maxim = $derived(maximForDay(dayOfYear));
 
   const weatherLabels: Record<WeatherName, string> = {
-    clear: 'Clear',
-    radiant: 'Radiant',
-    heavy: 'Heavy',
-    stormy: 'Stormy',
+    clear: 'Sakin',
+    radiant: 'Işıl ışıl',
+    heavy: 'Ağır',
+    stormy: 'Fırtınalı',
   };
 
   function draw() {
@@ -131,14 +131,14 @@
 
   function fmtDate(d: Date) {
     return d
-      .toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+      .toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
       .replace(',', ' ·');
   }
 
   function fmtFocus(minutes: number) {
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
-    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+    return h > 0 ? `${h}s ${m}dk` : `${m}dk`;
   }
 </script>
 
@@ -152,10 +152,10 @@
       <div class="qm-wordmark">Via <b>&middot;</b> Ethos</div>
       {#if view}
         <div class="qm-daysum">
-          <b>{view.honored_today} of {view.due_today}</b> honored<br />
-          <b>{fmtFocus(view.focus_minutes_today)}</b> in focus
+          <b>{view.honored_today} / {view.due_today}</b> tamamlandı<br />
+          <b>{fmtFocus(view.focus_minutes_today)}</b> odak
           {#if view.sleep_hours != null}
-            <br /><b>{view.sleep_hours.toFixed(1)}h</b> slept
+            <br /><b>{view.sleep_hours.toFixed(1)}s</b> uyku
           {/if}
         </div>
       {/if}
@@ -167,7 +167,7 @@
       {#if realWeather && realCondition}
         <div class="qm-weather-real">
           {Math.round(realWeather.temperature_c)}&deg; &middot; {conditionLabels[realCondition]}
-          {#if realWeather.stale}<span class="qm-stale"> &middot; last known</span>{/if}
+          {#if realWeather.stale}<span class="qm-stale"> &middot; son bilinen</span>{/if}
         </div>
       {/if}
       {#if view}
@@ -195,7 +195,7 @@
     <footer class="qm-footer">
       {#if view}
         <div class="qm-path">
-          <span class="qm-path-label">The Path &middot; 14 days</span>
+          <span class="qm-path-label">Yol &middot; 14 gün</span>
           {#each view.path as day, i}
             {#if day.pillar_colors.length === 0}
               <span class="qm-stone qm-gap"></span>
@@ -212,7 +212,7 @@
         </div>
         {#if view.milestones.length > 0}
           <div class="qm-milestones">
-            <span class="qm-path-label">Milestones</span>
+            <span class="qm-path-label">Kilometre taşları</span>
             {#each view.milestones as m}
               <span
                 class="qm-milestone"
@@ -225,7 +225,7 @@
         {/if}
         {#if view.course_bands.length > 0}
           <div class="qm-milestones">
-            <span class="qm-path-label">Field rows</span>
+            <span class="qm-path-label">Tarla sıraları</span>
             {#each view.course_bands as band}
               <span class="qm-course-chip" style={`--c:${band.color_token}`}
                 >{band.name} {Math.round(band.ratio * 100)}%</span
@@ -236,11 +236,11 @@
         <div class="qm-stats">
           <div class="qm-stat">
             <div class="qm-v">{view.total_points.toLocaleString()}</div>
-            <div class="qm-k">Ethos Points</div>
+            <div class="qm-k">Ethos Puanı</div>
           </div>
           <div class="qm-stat">
-            <div class="qm-v">{view.best_streak}d</div>
-            <div class="qm-k">Best Streak</div>
+            <div class="qm-v">{view.best_streak}g</div>
+            <div class="qm-k">En uzun seri</div>
           </div>
         </div>
       {/if}

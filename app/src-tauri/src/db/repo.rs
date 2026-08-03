@@ -28,6 +28,52 @@ pub fn now_ts() -> i64 {
     chrono::Utc::now().timestamp()
 }
 
+// ------------------------------------------------------------------ reset --
+
+/// Every table holding user data, ordered children-first so the foreign keys
+/// stay satisfied while the wipe runs.
+const RESET_TABLES: [&str; 13] = [
+    "ethos_ledger",
+    "entries",
+    "tasks",
+    "lessons",
+    "courses",
+    "meals",
+    "sleep_logs",
+    "schedule_blocks",
+    "actions",
+    "pillars",
+    "food_items",
+    "settings",
+    "weather_cache",
+];
+
+/// Factory reset: wipes every record the user ever entered, then re-seeds the
+/// default pillars, starter actions and packaged food list so the app comes
+/// back up in the same state as a fresh install. Runs in one transaction —
+/// either the whole reset lands or nothing does.
+pub fn reset_all(conn: &Connection) -> Result<()> {
+    conn.execute_batch("BEGIN")?;
+    let wipe = || -> Result<()> {
+        // The table order below already satisfies the foreign keys, but
+        // deferring the checks to COMMIT means reordering that list later
+        // cannot quietly break the reset.
+        conn.execute_batch("PRAGMA defer_foreign_keys = ON")?;
+        for table in RESET_TABLES {
+            conn.execute(&format!("DELETE FROM {table}"), [])?;
+        }
+        seed_if_empty(conn)?;
+        seed_food_items_if_empty(conn)
+    };
+    match wipe() {
+        Ok(()) => conn.execute_batch("COMMIT"),
+        Err(e) => {
+            let _ = conn.execute_batch("ROLLBACK");
+            Err(e)
+        }
+    }
+}
+
 // ---------------------------------------------------------------- seeding --
 
 pub fn seed_if_empty(conn: &Connection) -> Result<()> {
@@ -484,6 +530,23 @@ pub fn add_meal(
         params![id, today(conn).to_string(), time_slot, name, kcal, protein_g, carb_g, fat_g, note, now_ts()],
     )?;
     Ok(id)
+}
+
+/// The meals this person actually eats, most-used first — so a repeat meal is
+/// one tap instead of a re-typed search. Relies on SQLite's bare-column rule:
+/// with a single `max()` aggregate, the plain columns come from the row that
+/// max belongs to, i.e. the most recent version of that meal.
+pub fn recent_meals(conn: &Connection, limit: i64) -> Result<Vec<(String, f64, f64, f64, f64)>> {
+    let mut stmt = conn.prepare(
+        "SELECT name, kcal, protein_g, carb_g, fat_g, MAX(created_at)
+         FROM meals GROUP BY name
+         ORDER BY COUNT(*) DESC, MAX(created_at) DESC
+         LIMIT ?1",
+    )?;
+    let rows = stmt.query_map(params![limit], |r| {
+        Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?))
+    })?;
+    rows.collect()
 }
 
 pub fn delete_meal(conn: &Connection, meal_id: &str) -> Result<()> {

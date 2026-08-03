@@ -25,7 +25,7 @@
 
 <div class="view">
   {#if today.loading}
-    <p class="empty-state">Loading today&rsquo;s path&hellip;</p>
+    <p class="empty-state">Bugün yükleniyor&hellip;</p>
   {:else if today.view}
     <Schedule />
     {#each today.view.pillars as pillar (pillar.id)}
