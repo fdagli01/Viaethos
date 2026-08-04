@@ -26,6 +26,10 @@
   let resetting = $state(false);
   let resetDone = $state(false);
 
+  let hasSynthetic = $state(false);
+  let generatingSynthetic = $state(false);
+  let clearingSynthetic = $state(false);
+
   // Coordinates are a setting nobody wants to type. The city list covers the
   // realistic cases; the raw lat/lon inputs are gone.
   const cities: [string, number, number][] = [
@@ -50,6 +54,7 @@
   onMount(async () => {
     await loadSettings();
     actions = await api.getManageActions();
+    hasSynthetic = await api.hasSyntheticData();
   });
 
   async function loadSettings() {
@@ -142,6 +147,28 @@
       setTimeout(() => (resetDone = false), 4000);
     } finally {
       resetting = false;
+    }
+  }
+
+  async function generateSynthetic() {
+    generatingSynthetic = true;
+    try {
+      await api.generateSyntheticData();
+      hasSynthetic = true;
+      await today.refresh();
+    } finally {
+      generatingSynthetic = false;
+    }
+  }
+
+  async function clearSynthetic() {
+    clearingSynthetic = true;
+    try {
+      await api.clearSyntheticData();
+      hasSynthetic = false;
+      await today.refresh();
+    } finally {
+      clearingSynthetic = false;
     }
   }
 
@@ -312,6 +339,25 @@
         {#if aiKeySaved}<span class="action-meta">Kaydedildi.</span>{/if}
       </div>
     </form>
+  </div>
+
+  <div class="card">
+    <h3>Sentetik veri</h3>
+    <p class="settings-hint">
+      Son 30 günü uydurma seans, işaret, uyku ve öğün kayıtlarıyla doldurur — sadece genel arayüzün
+      dolu haliyle nasıl durduğuna bakmak için. Gerçek kayıtlarına dokunmaz ve istediğin zaman tek
+      tuşla geri alınabilir.
+    </p>
+    <div class="settings-actions">
+      <button class="btn primary" onclick={generateSynthetic} disabled={generatingSynthetic}>
+        {generatingSynthetic ? 'Oluşturuluyor…' : 'Sentetik bir ay oluştur'}
+      </button>
+      {#if hasSynthetic}
+        <button class="btn ghost" onclick={clearSynthetic} disabled={clearingSynthetic}>
+          {clearingSynthetic ? 'Temizleniyor…' : 'Sentetik verileri kaldır'}
+        </button>
+      {/if}
+    </div>
   </div>
 
   <div class="card">

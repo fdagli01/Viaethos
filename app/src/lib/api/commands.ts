@@ -153,4 +153,7 @@ export const api = {
     invoke<ScheduleBlockView[]>('delete_schedule_block', { blockId }),
   suggestSchedule: () => invoke<string>('suggest_schedule'),
   resetAllData: () => invoke<TodayView>('reset_all_data'),
+  generateSyntheticData: () => invoke<TodayView>('generate_synthetic_data'),
+  clearSyntheticData: () => invoke<TodayView>('clear_synthetic_data'),
+  hasSyntheticData: () => invoke<boolean>('has_synthetic_data'),
 };

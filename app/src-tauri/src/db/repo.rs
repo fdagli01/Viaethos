@@ -1168,3 +1168,253 @@ pub fn week_start(date: NaiveDate) -> NaiveDate {
     let weekday = date.weekday().num_days_from_monday();
     date - Duration::days(weekday as i64)
 }
+
+// ------------------------------------------------------------- synthetic --
+//
+// A manually-triggered preview tool (Settings → "Sentetik veri"): backfills
+// the last month with plausible entries/meals/sleep so the UI can be looked
+// at with real-looking density instead of an empty install. Every row it
+// writes carries `synthetic = 1` so it can be told apart from anything the
+// user actually entered and wiped independently of a full factory reset.
+
+const SYNTHETIC_DAYS: i64 = 30;
+
+/// Small, dependency-free xorshift64* PRNG — good enough for "looks
+/// plausible in a UI preview," not for anything that needs real entropy.
+struct Rng(u64);
+
+impl Rng {
+    fn new(seed: u64) -> Self {
+        Rng(seed ^ 0x9E37_79B9_7F4A_7C15)
+    }
+
+    fn next_u64(&mut self) -> u64 {
+        let mut x = self.0;
+        x ^= x >> 12;
+        x ^= x << 25;
+        x ^= x >> 27;
+        self.0 = x;
+        x.wrapping_mul(0x2545_F491_4F6C_DD1D)
+    }
+
+    fn chance(&mut self, p: f64) -> bool {
+        let unit = (self.next_u64() >> 11) as f64 / (1u64 << 53) as f64;
+        unit < p
+    }
+
+    fn range(&mut self, lo: i64, hi: i64) -> i64 {
+        if hi <= lo {
+            return lo;
+        }
+        lo + (self.next_u64() % ((hi - lo + 1) as u64)) as i64
+    }
+}
+
+fn synthetic_timestamp(day: NaiveDate, hour: i64, minute: i64) -> i64 {
+    day.and_hms_opt(hour.clamp(0, 23) as u32, minute.clamp(0, 59) as u32, 0)
+        .unwrap_or_else(|| day.and_hms_opt(12, 0, 0).unwrap())
+        .and_utc()
+        .timestamp()
+}
+
+pub fn generate_synthetic_month(conn: &Connection) -> Result<()> {
+    let actions = list_actions(conn)?;
+    let today_date = today(conn);
+    let start = today_date - Duration::days(SYNTHETIC_DAYS);
+    let end = today_date - Duration::days(1);
+    let mut rng = Rng::new(now_ts() as u64);
+
+    let mut day = start;
+    while day <= end {
+        let weekday = day.weekday().num_days_from_sunday();
+        for action in &actions {
+            if !action.schedule.is_due_on_weekday(weekday) {
+                continue;
+            }
+            let counts_before = completed_counts_since(conn, &action.id, day - Duration::days(400))?;
+            let streak_before =
+                crate::domain::streak::current_streak(&action.schedule, action.target_per_day, &counts_before, day);
+
+            match action.kind {
+                ActionKind::Tick => {
+                    let target = action.target_per_day.max(1);
+                    let count = if rng.chance(0.78) {
+                        rng.range(target, target + (target / 3).max(1))
+                    } else if rng.chance(0.5) {
+                        rng.range(0, (target - 1).max(0))
+                    } else {
+                        0
+                    };
+                    for _ in 0..count {
+                        let entry_id = Uuid::new_v4().to_string();
+                        let ts = synthetic_timestamp(day, rng.range(7, 22), rng.range(0, 59));
+                        conn.execute(
+                            "INSERT INTO entries
+                                (id, action_id, kind, occurred_on, intention, planned_minutes,
+                                 started_at, ended_at, outcome, reflection, lesson_id, created_at, synthetic)
+                             VALUES (?1, ?2, 'tick', ?3, NULL, NULL, ?4, ?4, 'completed', NULL, NULL, ?4, 1)",
+                            params![entry_id, action.id, day.to_string(), ts],
+                        )?;
+                        let points = crate::domain::ethos::tick_points(streak_before);
+                        insert_synthetic_ledger(conn, &action.pillar_id, Some(&action.id), Some(&entry_id), points, "tick_complete", ts)?;
+                    }
+                }
+                ActionKind::Focus => {
+                    let default_minutes = action.default_minutes.unwrap_or(25).max(5);
+                    if rng.chance(0.75) {
+                        let minutes = rng.range((default_minutes * 7) / 10, (default_minutes * 13) / 10).max(5);
+                        let sealed = rng.chance(0.4);
+                        let start_hour = rng.range(7, 21);
+                        let started = synthetic_timestamp(day, start_hour, rng.range(0, 59));
+                        let ended = started + minutes * 60;
+                        let entry_id = Uuid::new_v4().to_string();
+                        conn.execute(
+                            "INSERT INTO entries
+                                (id, action_id, kind, occurred_on, intention, planned_minutes,
+                                 started_at, ended_at, outcome, reflection, lesson_id, created_at, synthetic)
+                             VALUES (?1, ?2, 'focus', ?3, ?4, ?5, ?6, ?7, 'completed', ?8, NULL, ?6, 1)",
+                            params![
+                                entry_id,
+                                action.id,
+                                day.to_string(),
+                                sealed.then_some("Odaklan."),
+                                default_minutes,
+                                started,
+                                ended,
+                                sealed.then_some("İyi geçti."),
+                            ],
+                        )?;
+                        let points = crate::domain::ethos::focus_points(minutes, streak_before, sealed);
+                        insert_synthetic_ledger(conn, &action.pillar_id, Some(&action.id), Some(&entry_id), points, "focus_complete", ended)?;
+                    } else if rng.chance(0.3) {
+                        let minutes = rng.range(3, default_minutes.max(4));
+                        let started = synthetic_timestamp(day, rng.range(7, 21), rng.range(0, 59));
+                        let ended = started + minutes * 60;
+                        let entry_id = Uuid::new_v4().to_string();
+                        conn.execute(
+                            "INSERT INTO entries
+                                (id, action_id, kind, occurred_on, intention, planned_minutes,
+                                 started_at, ended_at, outcome, reflection, lesson_id, created_at, synthetic)
+                             VALUES (?1, ?2, 'focus', ?3, NULL, ?4, ?5, ?6, 'abandoned', NULL, NULL, ?5, 1)",
+                            params![entry_id, action.id, day.to_string(), default_minutes, started, ended],
+                        )?;
+                    }
+                }
+            }
+        }
+
+        generate_synthetic_sleep(conn, &mut rng, day)?;
+        generate_synthetic_meals(conn, &mut rng, day)?;
+
+        day += Duration::days(1);
+    }
+    Ok(())
+}
+
+fn insert_synthetic_ledger(
+    conn: &Connection,
+    pillar_id: &str,
+    action_id: Option<&str>,
+    entry_id: Option<&str>,
+    points: i64,
+    reason: &str,
+    created_at: i64,
+) -> Result<()> {
+    if points == 0 {
+        return Ok(());
+    }
+    conn.execute(
+        "INSERT INTO ethos_ledger (id, pillar_id, action_id, entry_id, points, reason, created_at, synthetic)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 1)",
+        params![Uuid::new_v4().to_string(), pillar_id, action_id, entry_id, points, reason, created_at],
+    )?;
+    Ok(())
+}
+
+fn generate_synthetic_sleep(conn: &Connection, rng: &mut Rng, day: NaiveDate) -> Result<()> {
+    let bed_hour = rng.range(22, 24) % 24;
+    let bed_at = format!("{:02}:{:02}", bed_hour, rng.range(0, 59));
+    let woke_at = format!("{:02}:{:02}", rng.range(6, 8), rng.range(0, 59));
+    let quality = rng.range(2, 5);
+    conn.execute(
+        "INSERT INTO sleep_logs (id, date, bed_at, woke_at, quality_1_5, created_at, synthetic)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, 1)
+         ON CONFLICT(date) DO NOTHING",
+        params![Uuid::new_v4().to_string(), day.to_string(), bed_at, woke_at, quality, synthetic_timestamp(day, 7, 0)],
+    )?;
+    Ok(())
+}
+
+const SYNTHETIC_MEALS: [(&str, f64, f64, f64, f64); 12] = [
+    ("Yulaf ve muz", 340.0, 10.0, 58.0, 7.0),
+    ("Menemen", 320.0, 16.0, 8.0, 24.0),
+    ("Izgara tavuk, pilav", 610.0, 42.0, 60.0, 18.0),
+    ("Mercimek çorbası, ekmek", 380.0, 14.0, 55.0, 9.0),
+    ("Somon, sebze", 520.0, 38.0, 12.0, 32.0),
+    ("Yoğurt, ceviz", 260.0, 12.0, 10.0, 18.0),
+    ("Simit, peynir", 410.0, 15.0, 48.0, 16.0),
+    ("Kırmızı et, bulgur pilavı", 640.0, 36.0, 58.0, 24.0),
+    ("Salata, avokado", 300.0, 6.0, 18.0, 22.0),
+    ("Elma, badem", 260.0, 6.0, 24.0, 16.0),
+    ("Ayran, sandviç", 450.0, 18.0, 42.0, 20.0),
+    ("Tavuk çorbası", 220.0, 14.0, 20.0, 8.0),
+];
+
+fn generate_synthetic_meals(conn: &Connection, rng: &mut Rng, day: NaiveDate) -> Result<()> {
+    let slots = ["breakfast", "lunch", "dinner"];
+    for slot in slots {
+        if !rng.chance(0.85) {
+            continue;
+        }
+        let (name, kcal, protein, carb, fat) = SYNTHETIC_MEALS[rng.range(0, SYNTHETIC_MEALS.len() as i64 - 1) as usize];
+        let portion = 0.85 + (rng.range(0, 30) as f64) / 100.0;
+        let ts = synthetic_timestamp(
+            day,
+            match slot {
+                "breakfast" => rng.range(7, 9),
+                "lunch" => rng.range(12, 14),
+                _ => rng.range(19, 21),
+            },
+            rng.range(0, 59),
+        );
+        conn.execute(
+            "INSERT INTO meals (id, occurred_on, time_slot, name, kcal, protein_g, carb_g, fat_g, note, created_at, synthetic)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, NULL, ?9, 1)",
+            params![
+                Uuid::new_v4().to_string(),
+                day.to_string(),
+                slot,
+                name,
+                kcal * portion,
+                protein * portion,
+                carb * portion,
+                fat * portion,
+                ts,
+            ],
+        )?;
+    }
+    Ok(())
+}
+
+/// Deletes every row the synthetic generator wrote, leaving real user data
+/// untouched. `entries` must go before `ethos_ledger` isn't required (no FK
+/// from ledger to entries prevents deleting entries first, but doing ledger
+/// first avoids dangling references while entries still exist).
+pub fn clear_synthetic_data(conn: &Connection) -> Result<()> {
+    conn.execute("DELETE FROM ethos_ledger WHERE synthetic = 1", [])?;
+    conn.execute("DELETE FROM entries WHERE synthetic = 1", [])?;
+    conn.execute("DELETE FROM meals WHERE synthetic = 1", [])?;
+    conn.execute("DELETE FROM sleep_logs WHERE synthetic = 1", [])?;
+    Ok(())
+}
+
+pub fn has_synthetic_data(conn: &Connection) -> Result<bool> {
+    let count: i64 = conn.query_row(
+        "SELECT (SELECT COUNT(*) FROM entries WHERE synthetic = 1)
+                + (SELECT COUNT(*) FROM meals WHERE synthetic = 1)
+                + (SELECT COUNT(*) FROM sleep_logs WHERE synthetic = 1)",
+        [],
+        |r| r.get(0),
+    )?;
+    Ok(count > 0)
+}

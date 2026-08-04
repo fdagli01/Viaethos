@@ -73,6 +73,9 @@ pub fn run() {
             commands::set_ai_api_key,
             commands::get_meal_presets,
             commands::reset_all_data,
+            commands::generate_synthetic_data,
+            commands::clear_synthetic_data,
+            commands::has_synthetic_data,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

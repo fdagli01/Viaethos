@@ -1513,3 +1513,34 @@ pub fn reset_all_data(app: tauri::AppHandle, db: State<DbState>) -> Result<Today
     let _ = app.emit("entry-logged", "reset");
     Ok(view)
 }
+
+// -------------------------------------------------------- Synthetic data --
+
+/// Manually-triggered preview tool: backfills the last month with plausible
+/// entries/meals/sleep so the general UI can be looked at with realistic
+/// density. Every row it writes is tagged `synthetic = 1`.
+#[tauri::command]
+pub fn generate_synthetic_data(app: tauri::AppHandle, db: State<DbState>) -> Result<TodayView, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    repo::generate_synthetic_month(&conn).map_err(|e| e.to_string())?;
+    let view = build_today_view(&conn)?;
+    let _ = app.emit("entry-logged", "synthetic-generated");
+    Ok(view)
+}
+
+/// Removes everything the synthetic generator wrote, leaving real data
+/// untouched.
+#[tauri::command]
+pub fn clear_synthetic_data(app: tauri::AppHandle, db: State<DbState>) -> Result<TodayView, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    repo::clear_synthetic_data(&conn).map_err(|e| e.to_string())?;
+    let view = build_today_view(&conn)?;
+    let _ = app.emit("entry-logged", "synthetic-cleared");
+    Ok(view)
+}
+
+#[tauri::command]
+pub fn has_synthetic_data(db: State<DbState>) -> Result<bool, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    repo::has_synthetic_data(&conn).map_err(|e| e.to_string())
+}
